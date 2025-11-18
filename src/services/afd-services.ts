@@ -173,7 +173,7 @@ export class AfdService {
             const cpfUnicosResult = await prisma.marcacoesRelogio.findMany({
                 distinct: ['cpfEmpregado'],
                 select: { cpfEmpregado: true },
-                orderBy: { cpfEmpregado: 'asc' }
+                orderBy: { cpfEmpregado: 'desc' }
             });
 
             const cpfUnicos = cpfUnicosResult.map(reg => reg.cpfEmpregado);
