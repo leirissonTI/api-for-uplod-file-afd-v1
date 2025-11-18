@@ -1,0 +1,106 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model RegistroTipo1 {
+  id                          String  @id @default(uuid())
+  tipo                        String
+  idSequencial                String
+  tipoIdentificadorEmpregador String
+  cnpjCpfEmpregador           String
+  cnoCaepf                    String
+  razaoSocial                 String
+  numeroFabricacao            String
+  dataInicial                 String
+  dataFinal                   String
+  dataHoraGeracao             String
+  versaoLayout                String
+  tipoIdentificadorFabricante String
+  cnpjCpfFabricante           String
+  modelo                      String
+  crc                         String
+  origem                      String?
+
+  @@map("registros_cabecalho")
+}
+
+model RegistroTipo10 {
+  id         String @id @default(uuid())
+  ultimo_nsr Int
+  origem     String @unique
+
+  @@unique([ultimo_nsr]) // <- evita duplicatas
+  @@map("registros_ultimo_nsr")
+}
+
+model RegistroTipo3 {
+  id           String   @id @default(uuid())
+  nsr          Int
+  tipo         String
+  dataCompleta DateTime @map("data_completa")
+  data         String
+  hora         String
+  cpfEmpregado String
+  crc          String
+  origem       String?
+
+  @@unique([nsr, cpfEmpregado, data, hora, origem]) // <- evita duplicatas
+  @@map("registros_ponto")
+}
+
+model EspelhoDiario {
+  id               Int     @id @default(autoincrement())
+  cpf              String
+  mesAno           String
+  diaDoMes         String
+  credito          Float
+  debito           Float
+  horasNormais     Float
+  horasExtras      Float
+  saldo            Float
+  motivoReajuste   String?
+  data             String
+  primeiraEntrada  String?
+  primeiraSaida    String?
+  segundaEntrada   String?
+  segundaSaida     String?
+  horasTrabalhadas Float
+  observacoes      String
+  status           String
+
+  EspelhoMensal EspelhoMensal[]
+
+  @@unique([cpf, mesAno])
+  @@map("espelho_diario")
+}
+
+model EspelhoMensal {
+  id                    Int             @id @default(autoincrement())
+  cpf                   String          @unique
+  mesAno                String          @unique
+  diasUteis             Int
+  diasTrabalhados       Int
+  registrosCorretos     Int?
+  ajustesEAbonos        Int?
+  faltas                Int?
+  totalHorasTrabalhadas Float
+  totalHorasDevidas     Float
+  saldoHoras            Float
+  registros             EspelhoDiario[]
+  dataCriacao           DateTime        @default(now())
+
+  @@unique([cpf, mesAno])
+  @@map("espelho_mensal")
+}

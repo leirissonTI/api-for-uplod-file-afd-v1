@@ -1,0 +1,161 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model RegistroTipo1 {
+  id                          String  @id @default(uuid())
+  tipo                        String
+  idSequencial                String
+  tipoIdentificadorEmpregador String
+  cnpjCpfEmpregador           String
+  cnoCaepf                    String
+  razaoSocial                 String
+  numeroFabricacao            String
+  dataInicial                 String
+  dataFinal                   String
+  dataHoraGeracao             String
+  versaoLayout                String
+  tipoIdentificadorFabricante String
+  cnpjCpfFabricante           String
+  modelo                      String
+  crc                         String
+  origem                      String?
+
+  @@map("registros_cabecalho")
+}
+
+model RegistroTipo10 {
+  id         String @id @default(uuid())
+  ultimo_nsr Int
+  origem     String @unique
+
+  @@unique([ultimo_nsr]) // <- evita duplicatas
+  @@map("registros_ultimo_nsr")
+}
+
+model MarcacoesRelogio {
+  id           String   @id @default(uuid())
+  nsr          Int
+  tipo         String
+  dataCompleta DateTime @map("data_completa")
+  data         String
+  hora         String
+  cpfEmpregado String
+  crc          String
+  origem       String?
+
+  @@unique([nsr, cpfEmpregado, data, hora, origem]) // <- evita duplicatas
+  @@map("marcacões_de_ponto")
+}
+
+model EspelhoDiario {
+  id               Int     @id @default(autoincrement())
+  cpf              String
+  mesAno           String
+  diaDoMes         String
+  credito          Float
+  debito           Float
+  horasNormais     Float
+  horasExtras      Float
+  saldo            Float
+  motivoReajuste   String?
+  data             String
+  primeiraEntrada  String?
+  primeiraSaida    String?
+  segundaEntrada   String?
+  segundaSaida     String?
+  horasTrabalhadas Float
+  horasAlmoco      Float   @map("horas_do_almoco")
+  bancoDeHoras     Float
+  observacoes      String
+  status           String
+  origem           String?
+
+  EspelhoMensal EspelhoMensal[]
+
+  @@map("espelho_diario")
+}
+
+model MarcacoesUsuario {
+  id             String    @id @default(uuid())
+  pimeiraEntrada DateTime  @map("primeira_entrada")
+  primeiraSaida  DateTime  @map("primeira_saida")
+  segundaEntrada DateTime  @map("segunda_entrada")
+  segundaSaida   DateTime  @map("segunda_saida")
+  pausaAlmoco    DateTime? @map("pausa_do_almoco")
+}
+
+model EspelhoDePontoMensal {
+  id               String  @id @default(uuid())
+  mesEmAberto      Boolean @default(false)
+  cpf              String
+  mesAno           String
+  diaDoMes         String
+  credito          Float
+  debito           Float
+  horasNormais     Float
+  horasExtras      Float
+  saldo            Float
+  motivoReajuste   String?
+  data             String
+  primeiraEntrada  String?
+  primeiraSaida    String?
+  segundaEntrada   String?
+  segundaSaida     String?
+  horasTrabalhadas Float
+  observacoes      String
+  status           String
+  origem           String?
+
+  @@map("espelho_de_ponto_mensal")
+}
+
+model EspelhoMensal {
+  id                    String          @id @default(uuid())
+  cpf                   String
+  mesAno                String          @map("mes_ano")
+  diasUteis             Int             @map("dias_uteis")
+  diasTrabalhados       Int             @map("dias_trabalhados")
+  registrosCorretos     Int?            @map("dias_corridos")
+  ajustesEAbonos        Int?            @map("ajustes_e_abonos")
+  faltas                Int?
+  totalHorasTrabalhadas Float           @map("totoal_de_horas_trabalhadas")
+  totalHorasDevidas     Float           @map("total_de_horas_devidas")
+  saldoHoras            Float           @map("saldo_horas")
+  registros             EspelhoDiario[]
+  dataCriacao           DateTime        @default(now()) @map("data_criacao")
+
+  MesAberto Boolean @default(false)
+
+  @@unique([cpf, mesAno])
+  @@map("espelho_de_atual")
+}
+
+model Frequencia {
+  id              String    @id @default(uuid())
+  cpf             String
+  data            DateTime
+  primeiraEntrada DateTime?
+  primeiraSaida   DateTime?
+  segundaEntrada  DateTime?
+  segundaSaida    DateTime?
+
+  @@unique([cpf, data])
+  @@map("frequencia")
+}
+
+model BancoDeHoras {
+  id                String   @id @default(uuid())
+  cpf               String
+  saldoHoras        Float
+  ultimaAtualizacao DateTime @default(now()) @map("ultima_atualizacao")
+
+  @@unique([cpf])
+  @@map("banco_de_horas")
+}

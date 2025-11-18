@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.espelhoPontoRoutes = void 0;
+const express_1 = require("express");
+const espelho_ponto_controller_1 = require("../controllers/espelho-ponto-controller");
+const espelhoPontoController = new espelho_ponto_controller_1.EspelhoPontoController();
+exports.espelhoPontoRoutes = (0, express_1.Router)();
+exports.espelhoPontoRoutes.get('/diario', espelhoPontoController.getallEspelhoDiario.bind(espelhoPontoController));
+exports.espelhoPontoRoutes.get('/mensal', espelhoPontoController.getallEspelhoMensal.bind(espelhoPontoController));
+exports.espelhoPontoRoutes.post('/gerar-espelho/:cpf/:mesAno', espelhoPontoController.gerarEspelhoMensal.bind(espelhoPontoController));
+exports.espelhoPontoRoutes.get('/resgatar-espelho-mes/:cpf/:mesAno', espelhoPontoController.resgatarEspelhoDoMes.bind(espelhoPontoController));
+exports.espelhoPontoRoutes.get('/resgatar-espelho-diario-mes/:cpf/:mesAno', espelhoPontoController.resgatarPontosDiariosDoMes.bind(espelhoPontoController));
