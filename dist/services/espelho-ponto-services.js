@@ -105,8 +105,8 @@ class EspelhoPontoService {
                 else {
                     // Processa como dia sem marcação (ex: sábado, domingo ou folga)
                     const diaDaSemana = data.getDay(); // 0 (domingo) a 6 (sábado)
-                    // const status = [0, 6].includes(diaDaSemana) ? 'Folga' : 'Ausente';
                     const status = [0, 6].includes(diaDaSemana) ? 'Folga' : 'Sem Registro';
+                    // const status: IStatusDia = [0, 6].includes(diaDaSemana) ? 'Folga' : 'Ausente';
                     espelhoDiario = {
                         cpf,
                         diaDoMes: this.formatarData(data, 'Extenso'),
@@ -174,7 +174,7 @@ class EspelhoPontoService {
                 const diasUteis = (0, getDiasUteis_1.getDiasUteis)(mes, ano);
                 // Melhoria: Contagem mais precisa de dias trabalhados
                 const diasTrabalhados = espelhosDiarios.filter(d => d.status === 'Presente' ||
-                    // (d.horasTrabalhadas > 0 && d.status !== 'Ausente')).length;
+                    // (d.horasTrabalhadas > 0 && d.status !== 'Ausente')
                     (d.horasTrabalhadas > 0 && d.status !== 'Sem Registro')).length;
                 const faltas = Math.max(diasUteis - diasTrabalhados, 0);
                 const cargaDevida = diasUteis * 7;
@@ -327,113 +327,6 @@ class EspelhoPontoService {
         // Arredonda para 2 casas decimais para evitar problemas de precisão
         return Math.round(resultado * 100) / 100;
     }
-    // private processarDia(cpf: string, mesAno: string, dataStr: string, marcas: any[]): IEspelhoDiario {
-    //     // Ordena as marcas por hora
-    //     marcas.sort((a, b) => a.hora.localeCompare(b.hora));
-    //     // Extrai as batidas
-    //     const primeiraEntrada = marcas[0]?.hora?.slice(0, 5) || null;
-    //     const primeiraSaida = marcas[1]?.hora?.slice(0, 5) || null;
-    //     const segundaEntrada = marcas[2]?.hora?.slice(0, 5) || null;
-    //     const segundaSaida = marcas[3]?.hora?.slice(0, 5) || null;
-    //     // Calcula horas trabalhadas
-    //     let periodo1 = 0;
-    //     let periodo2 = 0;
-    //     if (primeiraEntrada && primeiraSaida) {
-    //         periodo1 = this.calcularHorasTrabalhadas(primeiraEntrada, primeiraSaida);
-    //     }
-    //     if (segundaEntrada && segundaSaida) {
-    //         periodo2 = this.calcularHorasTrabalhadas(segundaEntrada, segundaSaida);
-    //     }
-    //     const horasTrabalhadas = parseFloat((periodo1 + periodo2).toFixed(2));
-    //     // REGRAS EXATAS
-    //     const JORNADA_PADRAO = 8
-    //     let horasNormais = 8
-    //     let horasExtras = 0
-    //     let horasDeAlmoco = 0
-    //     let bancoDeHoras = 0
-    //     if (horasTrabalhadas > 0) {
-    //         if (horasTrabalhadas === 7) {
-    //             horasNormais = 8
-    //             horasDeAlmoco = 0
-    //         } else if (horasTrabalhadas === 8) {
-    //             horasNormais = 8
-    //             horasDeAlmoco = 1
-    //         } else if (horasTrabalhadas === 9) {
-    //             horasNormais = 8
-    //             horasDeAlmoco = 2
-    //         } else if (horasTrabalhadas >= 10) {
-    //             horasNormais = 8
-    //             horasDeAlmoco = 2
-    //             bancoDeHoras = parseFloat((horasTrabalhadas - 10).toFixed(2)); // O que passar de 10
-    //         } else if (horasTrabalhadas > 7 && horasTrabalhadas < 8) {
-    //             horasNormais = 8
-    //             horasDeAlmoco = 0
-    //             bancoDeHoras = parseFloat((horasTrabalhadas - 7).toFixed(2)); // Minutos extras
-    //         } else if (horasTrabalhadas > 8 && horasTrabalhadas < 9) {
-    //             // 8.10, 8.30, etc.
-    //             horasNormais = 8
-    //             horasDeAlmoco = 1
-    //             bancoDeHoras = parseFloat((horasTrabalhadas - 8).toFixed(2)); // Minutos extras
-    //         } else if (horasTrabalhadas > 9 && horasTrabalhadas < 10) {
-    //             // 9.15, 9.30, etc.
-    //             horasNormais = 8
-    //             horasDeAlmoco = 2
-    //             bancoDeHoras = parseFloat((horasTrabalhadas - 9).toFixed(2)); // Minutos extras
-    //         }
-    //     }
-    //     // Cálculo do saldo para o espelho
-    //     const saldo = parseFloat((horasTrabalhadas - JORNADA_PADRAO).toFixed(2));
-    //     const credito = Math.max(saldo, 0);
-    //     const debito = Math.abs(Math.min(saldo, 0));
-    //     // Status final
-    //     let status: IStatusDia;
-    //     const batidasValidas = [
-    //         primeiraEntrada,
-    //         primeiraSaida,
-    //         segundaEntrada,
-    //         segundaSaida
-    //     ].filter(Boolean).length;
-    //     if (batidasValidas === 0) {
-    //         status = 'Ausente';
-    //     } else if (batidasValidas === 1) {
-    //         status = 'Parcial';
-    //     } else if (horasTrabalhadas >= 7) {
-    //         status = 'Presente';
-    //     } else {
-    //         status = 'Parcial';
-    //     }
-    //     // Observações
-    //     const observacoes = [];
-    //     if (!primeiraEntrada) observacoes.push('Primeira entrada não registrada');
-    //     if (!primeiraSaida) observacoes.push('Primeira saída não registrada');
-    //     if (!segundaEntrada) observacoes.push('Segunda entrada não registrada');
-    //     if (!segundaSaida) observacoes.push('Segunda saída não registrada');
-    //     // Parse da data
-    //     const [d, m, a] = dataStr.split('/').map(Number);
-    //     const data = new Date(a, m - 1, d);
-    //     return {
-    //         cpf,
-    //         diaDoMes: this.formatarData(data, 'Extenso'),
-    //         credito: this.formatarDecimal(credito),
-    //         debito: this.formatarDecimal(debito),
-    //         horasNormais: this.formatarDecimal(JORNADA_PADRAO),
-    //         horasExtras: this.formatarDecimal(horasExtras),
-    //         saldo: this.formatarDecimal(saldo),
-    //         motivoReajuste: '',
-    //         data: dataStr,
-    //         primeiraEntrada,
-    //         primeiraSaida,
-    //         segundaEntrada,
-    //         segundaSaida,
-    //         horasTrabalhadas: this.formatarDecimal(horasTrabalhadas),
-    //         observacoes: observacoes.length > 0 ? observacoes.join('; ') : 'Nenhuma',
-    //         origem: marcas[0]?.origem || '',
-    //         status,
-    //         horasAlmoco: horasDeAlmoco,
-    //         mesAno,
-    //         bancoDeHoras: this.formatarDecimal(bancoDeHoras)
-    //     }
-    // }
     processarDia(cpf, mesAno, dataStr, marcas) {
         // Constante: 20 minutos em milissegundos
         const TEMPO_20_MINUTOS_EM_MS = 20 * 60 * 1000;

@@ -15,6 +15,7 @@ exports.app.use((0, cors_1.default)({
     origin: [
         '*',
         'http://pontojus.app.am.trf1.gov.br',
+        'http://localhost:5007',
         'http://localhost:3003',
         'http://192.168.0.100:3003',
         'http://172.20.48.1:3003',

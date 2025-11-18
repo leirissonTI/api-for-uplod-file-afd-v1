@@ -119,6 +119,7 @@ class EspelhoPontoController {
     async resgatarPontosDiariosDoMes(request, response) {
         try {
             const { cpf, mesAno } = request.params;
+            console.log(cpf, mesAno, 'estou aqui');
             // Validação básica de parâmetros
             if (!cpf || !mesAno) {
                 response.json({

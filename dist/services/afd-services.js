@@ -135,7 +135,7 @@ class AfdService {
             const cpfUnicosResult = await prisma_1.prisma.marcacoesRelogio.findMany({
                 distinct: ['cpfEmpregado'],
                 select: { cpfEmpregado: true },
-                orderBy: { cpfEmpregado: 'asc' }
+                orderBy: { cpfEmpregado: 'desc' }
             });
             const cpfUnicos = cpfUnicosResult.map(reg => reg.cpfEmpregado);
             marcarCheckpoint('Busca de CPFs', `${cpfUnicos.length} CPFs encontrados`);
