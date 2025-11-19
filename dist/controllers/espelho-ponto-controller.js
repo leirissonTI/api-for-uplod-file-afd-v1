@@ -5,63 +5,6 @@ const espelho_ponto_services_1 = require("../services/espelho-ponto-services");
 const getInicioFimDoMes_1 = require("../utils/getInicioFimDoMes");
 class EspelhoPontoController {
     service = new espelho_ponto_services_1.EspelhoPontoService();
-    // async gerarEspelhoMensal(request: Request, response: Response) {
-    //     try {
-    //         const { cpf, mesAno } = request.params
-    //         // Validação básica de parâmetros
-    //         if (!cpf || !mesAno) {
-    //             response.json({
-    //                 success: false,
-    //                 error: `É necessário informar os dados CPF e DATA.`,
-    //             })
-    //         }
-    //         // Validação do formato CPF (opcional)
-    //         if (cpf.length !== 11 || !/^\d+$/.test(cpf)) {
-    //             response.json({
-    //                 success: false,
-    //                 error: `CPF deve conter exatamente 11 dígitos numéricos.`,
-    //             })
-    //         }
-    //         const mesAnoArray = mesAno.split('-')
-    //         if (mesAnoArray.length !== 2) {
-    //             response.json({
-    //                 success: false,
-    //                 error: `Formato de data inválido. Use o formato MM-AAAA (ex: 01-2025).`,
-    //             })
-    //         }
-    //         const [mes, ano] = mesAnoArray.map(Number)
-    //         // Validação do formato da data
-    //         if (isNaN(mes) || isNaN(ano) || mes < 1 || mes > 12 || ano < 2000 || ano > 2100) {
-    //             response.json({
-    //                 success: false,
-    //                 error: `Data inválida. Mês deve ser entre 01-12 e ano entre 2000-2100.`,
-    //             })
-    //         }
-    //         // Validação se o mês informado é maior que o atual
-    //         const agora = new Date()
-    //         const mesAtual = agora.getMonth() + 1
-    //         const anoAtual = agora.getFullYear()
-    //         if (ano > anoAtual || (ano === anoAtual && mes > mesAtual)) {
-    //             response.status(400).json({
-    //                 success: false,
-    //                 error: `Não é possível gerar espelho para mês futuro. Mês/Ano atual: ${mesAtual.toString().padStart(2, '0')}/${anoAtual}`,
-    //             })
-    //         }
-    //         const { inicioDoMes, inicioDoProximoMes } = getInicioFimDoMes(mes, ano)
-    //         const espelho = await this.service.gerarEspelhoMensal(cpf, inicioDoMes, inicioDoProximoMes)
-    //         response.json({
-    //             success: true,
-    //             message: `Espelho mensal gerado com sucesso para ${mes.toString().padStart(2, '0')}/${ano}.`,
-    //             data: espelho
-    //         })
-    //     } catch (error: any) {
-    //         response.json({
-    //             success: false,
-    //             error: `Erro ao gerar espelho mensal.`,
-    //             message: `${error.message}`
-    //         })
-    //     }
-    // }
     async gerarEspelhoMensal(request, response) {
         try {
             const { cpf, mesAno } = request.params;

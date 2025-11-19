@@ -15,50 +15,219 @@ export class AfdService {
 
 
     parseFile(filePath: string): TRegistroAFD[] {
-        const fullPath = path.resolve(filePath)
-        const content = fs.readFileSync(fullPath, 'utf8')
+        const startTime = Date.now();
+        
+        try {
+            const fullPath = path.resolve(filePath)
+            const content = fs.readFileSync(fullPath, 'utf8')
 
-        const linhas = content.split(/\r?\n/).filter((l) => l.trim() !== '')
+            const linhas = content.split(/\r?\n/).filter((l) => l.trim() !== '')
+            
+            console.log(`📄 Processando ${linhas.length} linhas do arquivo AFD...`)
 
-        let numeroFabricacao = ''  // ✅ Usado como origem
+            let numeroFabricacao = ''  // ✅ Usado como origem
+            let registrosInvalidos = 0
+            let registrosProcessados = 0
 
-        const registros: TRegistroAFD[] = linhas.map((linha) => {
-            const tipo = linha.charAt(9)  // posição 10 (0-index)
-            let parsed: any = null
+            const registros: TRegistroAFD[] = linhas.map((linha, index) => {
+                try {
+                    const tipo = linha.charAt(9)  // posição 10 (0-index)
+                    let parsed: any = null
 
-            switch (tipo) {
-                case '1':
-                    parsed = new RegistroTipo1(linha).toJSON()
-                    numeroFabricacao = parsed.numeroFabricacao || ''  // ✅ Captura número de fabricação
-                    break
+                    switch (tipo) {
+                        case '1':
+                            parsed = new RegistroTipo1(linha).toJSON()
+                            numeroFabricacao = parsed.numeroFabricacao || ''  // ✅ Captura número de fabricação
+                            break
 
-                case '3':
-                    parsed = new RegistroTipo3(linha).toJSON()
-                    break
+                        case '3':
+                            parsed = new RegistroTipo3(linha).toJSON()
+                            // 🚨 Verificar se o registro é válido
+                            if (parsed.valido === false) {
+                                registrosInvalidos++
+                                console.warn(`⚠️ Registro inválido na linha ${index + 1}: ${parsed.erro}`)
+                            }
+                            break
 
-                default:
-                    parsed = null
+                        default:
+                            console.warn(`⚠️ Tipo de registro desconhecido na linha ${index + 1}: ${tipo}`)
+                            parsed = null
+                    }
+
+                    registrosProcessados++
+
+                    return {
+                        tipo,
+                        linha,
+                        parsed: parsed ? { ...parsed, origem: numeroFabricacao } : null, // ✅ Adiciona origem
+                    }
+                } catch (error: any) {
+                    registrosInvalidos++
+                    console.error(`❌ Erro ao processar linha ${index + 1}: ${error.message}`)
+                    console.error(`Linha problemática: ${linha.substring(0, 50)}...`)
+                    
+                    return {
+                        tipo: 'ERRO',
+                        linha,
+                        parsed: null,
+                        erro: error.message
+                    }
+                }
+            })
+
+            console.log(`✅ Processamento concluído: ${registrosProcessados} processados, ${registrosInvalidos} inválidos`)
+            console.log(`⏱️ Tempo de processamento: ${Date.now() - startTime}ms`)
+
+            return registros
+
+        } catch (error: any) {
+            console.error('❌ Erro ao ler arquivo AFD:', error.message)
+            throw new Error(`Falha ao processar arquivo AFD: ${error.message}`)
+        }
+    }
+
+    private validarRegistros(registros: TRegistroAFD[]): TRegistroAFD[] {
+        const registrosValidos: TRegistroAFD[] = [];
+        const registrosInvalidos: any[] = [];
+
+        for (const registro of registros) {
+            try {
+                // Validar estrutura básica
+                if (!registro.parsed) {
+                    registrosInvalidos.push({ registro, erro: 'Registro sem parsed' });
+                    continue;
+                }
+
+                const parsed = registro.parsed;
+
+                // 🚨 Validações críticas para registros tipo 3
+                if (registro.tipo === '3') {
+                    // Verificar flag de validade primeiro
+                    if ((parsed as any).valido === false) {
+                        registrosInvalidos.push({ 
+                            registro, 
+                            erro: `Registro marcado como inválido: ${(parsed as any).erro}` 
+                        });
+                        continue;
+                    }
+
+                    // Validar NSR
+                    if (!parsed.nsr || isNaN(Number(parsed.nsr))) {
+                        registrosInvalidos.push({ 
+                            registro, 
+                            erro: `NSR inválido: ${parsed.nsr}` 
+                        });
+                        continue;
+                    }
+
+                    // Validar CPF
+                    if (!parsed.cpfEmpregado || parsed.cpfEmpregado.length !== 11 || !/^\d+$/.test(parsed.cpfEmpregado)) {
+                        registrosInvalidos.push({ 
+                            registro, 
+                            erro: `CPF inválido: ${parsed.cpfEmpregado}` 
+                        });
+                        continue;
+                    }
+
+                    // Validar dataCompleta - CRÍTICO!
+                    if (!parsed.dataCompleta || !(parsed.dataCompleta instanceof Date) || isNaN(parsed.dataCompleta.getTime())) {
+                        registrosInvalidos.push({ 
+                            registro, 
+                            erro: `dataCompleta inválida: ${parsed.dataCompleta}` 
+                        });
+                        continue;
+                    }
+
+                    // Validar data e hora strings
+                    const dataStr = String(parsed.data || '');
+                    if (!parsed.data || parsed.data === 'DATA INVÁLIDA' || !/^\d{2}\/\d{2}\/\d{4}$/.test(dataStr)) {
+                        registrosInvalidos.push({ 
+                            registro, 
+                            erro: `Data inválida: ${parsed.data}` 
+                        });
+                        continue;
+                    }
+
+                    const horaStr = String(parsed.hora || '');
+                    if (!parsed.hora || parsed.hora === 'HORA INVÁLIDA' || !/^\d{2}:\d{2}:\d{2}$/.test(horaStr)) {
+                        registrosInvalidos.push({ 
+                            registro, 
+                            erro: `Hora inválida: ${parsed.hora}` 
+                        });
+                        continue;
+                    }
+
+                    // Validar CRC
+                    if (!parsed.crc || parsed.crc.length < 4) {
+                        registrosInvalidos.push({ 
+                            registro, 
+                            erro: `CRC inválido: ${parsed.crc}` 
+                        });
+                        continue;
+                    }
+
+                    // 🎯 Tudo válido - adicionar à lista
+                    registrosValidos.push(registro);
+
+                } else {
+                    // Para outros tipos, validação básica
+                    if (parsed && Object.keys(parsed).length > 0) {
+                        registrosValidos.push(registro);
+                    } else {
+                        registrosInvalidos.push({ 
+                            registro, 
+                            erro: 'Registro parsed vazio' 
+                        });
+                    }
+                }
+
+            } catch (error: any) {
+                registrosInvalidos.push({ 
+                    registro, 
+                    erro: `Exceção na validação: ${error.message}` 
+                });
             }
+        }
 
-            return {
-                tipo,
-                linha,
-                parsed: parsed ? { ...parsed, origem: numeroFabricacao } : null, // ✅ Adiciona origem
-            }
-        })
+        // 📊 Relatório de validação
+        if (registrosInvalidos.length > 0) {
+            console.warn(`⚠️ ${registrosInvalidos.length} registros inválidos encontrados:`);
+            console.warn('Primeiros 5 registros inválidos:', registrosInvalidos.slice(0, 5));
+            
+            // Estatísticas por tipo de erro
+            const estatisticasErros = registrosInvalidos.reduce((acc, item) => {
+                const erro = item.erro.split(':')[0]; // Pegar tipo do erro
+                acc[erro] = (acc[erro] || 0) + 1;
+                return acc;
+            }, {} as Record<string, number>);
+            
+            console.warn('📊 Estatísticas de erros:', estatisticasErros);
+        }
 
-        return registros
+        console.log(`✅ ${registrosValidos.length}/${registros.length} registros válidos`);
+        return registrosValidos;
     }
 
     async salvarRegistros(registros: TRegistroAFD[]): Promise<void> {
         const startTime = Date.now();
         
         try {
+            console.log(`💾 Iniciando salvamento de ${registros.length} registros...`);
+
+            // 🔍 Validar e filtrar registros antes de processar
+            const registrosValidos = this.validarRegistros(registros);
+            console.log(`✅ ${registrosValidos.length} registros válidos após validação`);
+
+            if (registrosValidos.length === 0) {
+                console.warn('⚠️ Nenhum registro válido para salvar');
+                return;
+            }
+
             // Agrupar registros por tipo e origem
             const registrosTipo3PorOrigem: Record<string, any[]> = {};
             const outrosRegistros: TRegistroAFD[] = [];
 
-            for (const registro of registros) {
+            for (const registro of registrosValidos) {
                 if (registro.tipo === '3' && registro.parsed) {
                     const origem = registro.parsed.origem ?? 'sem_origem';
                     if (!registrosTipo3PorOrigem[origem]) {

@@ -23,12 +23,22 @@ class ArquivoAfdController {
             }
             const registros = await this.afdService.parseFile(file.path);
             this.registrosCache = registros;
+            // 📊 Calcular estatísticas
+            const totalRegistros = registros.length;
+            const registrosValidos = registros.filter(r => r.parsed && r.tipo !== 'ERRO');
+            const registrosInvalidos = registros.filter(r => !r.parsed || r.tipo === 'ERRO' || r.parsed?.valido === false);
+            const registrosTipo3 = registros.filter(r => r.tipo === '3' && r.parsed && r.parsed?.valido !== false);
             (0, send_response_1.sendResponse)(response, {
                 success: true,
                 message: 'Arquivo processado com sucesso',
                 data: {
-                    totalRegistros: registros.length,
-                    registrosPreview: registros.slice(0, 400),
+                    totalRegistros,
+                    registrosValidos: registrosValidos.length,
+                    registrosInvalidos: registrosInvalidos.length,
+                    registrosTipo3: registrosTipo3.length,
+                    percentualValido: totalRegistros > 0 ? Math.round((registrosValidos.length / totalRegistros) * 100) : 0,
+                    registrosPreview: registros.slice(0, 100), // Reduzido para 100
+                    temRegistrosInvalidos: registrosInvalidos.length > 0
                 },
                 statusCode: 200,
             });
@@ -36,7 +46,7 @@ class ArquivoAfdController {
         catch (error) {
             (0, send_response_1.sendResponse)(response, {
                 success: false,
-                error: error.message || 'Erroro ao processar o arquivo',
+                error: error.message || 'Erro ao processar o arquivo',
                 statusCode: 500,
             });
         }
