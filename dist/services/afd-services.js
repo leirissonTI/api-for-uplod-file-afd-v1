@@ -244,7 +244,9 @@ class AfdService {
                         if (nsrAtual !== nsrEsperado) {
                             console.warn(`⚠️ Gap de NSR detectado em ${origem}: esperado ${nsrEsperado}, encontrado ${nsrAtual}`);
                         }
-                        registrosParaInserir.push(parsed);
+                        // Remover campos que não existem no banco de dados
+                        const { valido, erro, ...dadosParaInserir } = parsed;
+                        registrosParaInserir.push(dadosParaInserir);
                         // Atualizar último NSR para esta origem
                         if (!novosUltimosNSRPorOrigem[origem] || nsrAtual > novosUltimosNSRPorOrigem[origem]) {
                             novosUltimosNSRPorOrigem[origem] = nsrAtual;
