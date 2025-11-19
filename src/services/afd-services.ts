@@ -458,11 +458,22 @@ export class AfdService {
     private async identificarMesesParaReprocessar(cpfs: string[]): Promise<{ cpf: string; mes: number; ano: number }[]> {
         const mesesParaProcessar: { cpf: string; mes: number; ano: number }[] = [];
         
-        // Verificar últimos 2 meses para cada CPF (simplificado)
+        // Configurar quantidade de meses para processar (padrão: 2 meses)
+        const mesesProcessar = parseInt(process.env.MESES_PROCESSAR || '2');
+        
+        // Validar valor para evitar processamento excessivo
+        const mesesValidos = Math.max(1, Math.min(mesesProcessar, 12)); // Entre 1 e 12 meses
+        
+        if (mesesValidos !== mesesProcessar) {
+            console.warn(`⚠️ Valor MESES_PROCESSAR=${mesesProcessar} ajustado para ${mesesValidos} meses`);
+        }
+        
+        console.log(`📅 Processando ${mesesValidos} meses para ${cpfs.length} CPFs`);
+        
         const hoje = new Date();
         
         for (const cpf of cpfs) {
-            for (let i = 0; i < 2; i++) { // Últimos 2 meses
+            for (let i = 0; i < mesesValidos; i++) { // Últimos N meses configuráveis
                 const dataVerificacao = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
                 const mes = dataVerificacao.getMonth() + 1;
                 const ano = dataVerificacao.getFullYear();
