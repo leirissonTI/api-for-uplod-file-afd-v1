@@ -18,18 +18,19 @@ export class EspelhoPontoService {
             // Extrair mês e ano da data fornecida (ex: "02/2025")
             const mesAno = `${String(inicioDoMes.getMonth() + 1).padStart(2, '0')}/${inicioDoMes.getFullYear()}`;
 
-
-
             // Buscar registros no banco com CPF e filtro no campo `data`
             const registros = await prisma.espelhoDiario.findMany({
                 where: {
                     cpf: cpf,
                     mesAno: mesAno
+                },
+                orderBy: {
+                    data: 'asc' // Ordem cronológica para consistência
                 }
             });
 
             if (!registros.length) {
-                throw new AppError("Nenhum registro encontrado");
+                throw new AppError(`Nenhum registro encontrado para CPF ${cpf} no mês ${mesAno}`);
             }
 
             return registros
