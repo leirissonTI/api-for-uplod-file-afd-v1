@@ -377,8 +377,27 @@ class AfdService {
                 return;
             }
             console.log(`📅 ${mesesParaProcessar.length} combinações CPF/mês para processar`);
+            // 🎯 Solução 2: Aplicar reorganização cronológica
+            const mesesOrdenados = this.reorganizarPorOrdemCronologica(mesesParaProcessar);
+            // 🎯 Solução 4: Logging detalhado do processamento
+            console.log(`🔍 Detalhamento do processamento:`);
+            console.log(`   Total de combinações: ${mesesOrdenados.length}`);
+            console.log(`   CPFs únicos: ${new Set(mesesOrdenados.map(m => m.cpf)).size}`);
+            console.log(`   Períodos únicos: ${new Set(mesesOrdenados.map(m => `${m.ano}-${m.mes}`)).size}`);
+            // Mostrar distribuição por período
+            const distribuicaoPorMes = mesesOrdenados.reduce((acc, item) => {
+                const periodo = `${item.ano}-${item.mes.toString().padStart(2, '0')}`;
+                acc[periodo] = (acc[periodo] || 0) + 1;
+                return acc;
+            }, {});
+            console.log(`📊 Distribuição por período:`, distribuicaoPorMes);
+            // Configuração de processamento sequencial via variável de ambiente
+            const processarSequencial = process.env.PROCESSAR_SEQUENCIAL === 'true';
+            if (processarSequencial) {
+                console.log(`🎯 Modo sequencial ativado via PROCESSAR_SEQUENCIAL=true`);
+            }
             // 🔄 Processar com concorrência controlada
-            const resultados = await this.processarConcorrenteOtimizado(mesesParaProcessar, 3); // 3 concorrentes
+            const resultados = await this.processarConcorrenteOtimizado(mesesOrdenados, 3, processarSequencial); // 3 concorrentes
             const tempoTotal = Date.now() - startTime;
             console.log(`✅ Processamento concluído: ${resultados.sucessos} sucessos, ${resultados.erros} erros em ${tempoTotal}ms`);
         }
@@ -432,17 +451,100 @@ class AfdService {
                 }
             }
         }
+        // 🎯 Solução 1: Ordenar por CPF + Mês/Ano para processamento previsível
+        mesesParaProcessar.sort((a, b) => {
+            // Primeiro ordena por CPF
+            if (a.cpf !== b.cpf) {
+                return a.cpf.localeCompare(b.cpf);
+            }
+            // Depois ordena por Ano/Mês
+            if (a.ano !== b.ano) {
+                return a.ano - b.ano;
+            }
+            return a.mes - b.mes;
+        });
+        console.log(`📋 Meses ordenados para processamento:`, mesesParaProcessar.map(m => `${m.cpf}: ${m.mes}/${m.ano}`).slice(0, 10));
         return mesesParaProcessar;
     }
-    async processarConcorrenteOtimizado(mesesParaProcessar, concorrenciaMaxima = 3) {
+    reorganizarPorOrdemCronologica(mesesParaProcessar) {
+        // 🎯 Solução 2: Agrupar por período (ano/mês) e processar todos CPFs do mesmo mês juntos
+        const mesesPorPeriodo = new Map();
+        // Agrupar por período (ano/mês)
+        for (const item of mesesParaProcessar) {
+            const chavePeriodo = `${item.ano}-${item.mes.toString().padStart(2, '0')}`;
+            if (!mesesPorPeriodo.has(chavePeriodo)) {
+                mesesPorPeriodo.set(chavePeriodo, []);
+            }
+            mesesPorPeriodo.get(chavePeriodo).push(item);
+        }
+        // Ordenar períodos cronologicamente
+        const periodosOrdenados = Array.from(mesesPorPeriodo.keys()).sort();
+        // Criar novo array na ordem cronológica
+        const resultado = [];
+        for (const periodo of periodosOrdenados) {
+            const itensDoPeriodo = mesesPorPeriodo.get(periodo);
+            // Ordenar CPFs dentro do período para consistência
+            itensDoPeriodo.sort((a, b) => a.cpf.localeCompare(b.cpf));
+            resultado.push(...itensDoPeriodo);
+        }
+        console.log(`📅 Reorganização cronológica: ${resultado.length} meses em ${periodosOrdenados.length} períodos`);
+        console.log(`📋 Ordem cronológica:`, periodosOrdenados);
+        return resultado;
+    }
+    async processarSequencialmentePorPeriodo(mesesParaProcessar) {
+        console.log(`🎯 Processando sequencialmente por período (sem concorrência)`);
+        let sucessos = 0;
+        let erros = 0;
+        const detalhesErros = [];
+        // Agrupar por período
+        const mesesPorPeriodo = new Map();
+        for (const item of mesesParaProcessar) {
+            const chavePeriodo = `${item.ano}-${item.mes.toString().padStart(2, '0')}`;
+            if (!mesesPorPeriodo.has(chavePeriodo)) {
+                mesesPorPeriodo.set(chavePeriodo, []);
+            }
+            mesesPorPeriodo.get(chavePeriodo).push(item);
+        }
+        // Ordenar períodos cronologicamente
+        const periodosOrdenados = Array.from(mesesPorPeriodo.keys()).sort();
+        for (const periodo of periodosOrdenados) {
+            const itensDoPeriodo = mesesPorPeriodo.get(periodo);
+            console.log(`\n📅 Processando período ${periodo} (${itensDoPeriodo.length} CPFs)`);
+            console.log(`   CPFs:`, itensDoPeriodo.map(i => i.cpf));
+            for (const { cpf, mes, ano } of itensDoPeriodo) {
+                try {
+                    const { inicioDoMes, inicioDoProximoMes } = (0, getInicioFimDoMes_1.getInicioFimDoMes)(mes, ano);
+                    await this.serviceEspelhoPonto.gerarEspelhoMensal(cpf, inicioDoMes, inicioDoProximoMes);
+                    sucessos++;
+                    console.log(`✅ ${cpf} - ${mes}/${ano}`);
+                }
+                catch (error) {
+                    erros++;
+                    const erroMsg = `CPF ${cpf} - ${mes}/${ano}: ${error.message}`;
+                    detalhesErros.push(erroMsg);
+                    console.error(`❌ Erro: ${erroMsg}`);
+                }
+            }
+            console.log(`📊 Período ${periodo} concluído: ${itensDoPeriodo.length} processados`);
+        }
+        return { sucessos, erros, detalhesErros };
+    }
+    async processarConcorrenteOtimizado(mesesParaProcessar, concorrenciaMaxima = 3, processarSequencialmente = false) {
         let sucessos = 0;
         let erros = 0;
         const detalhesErros = [];
         let processados = 0;
+        // 🎯 Solução 3: Opção de processamento sequencial por período
+        if (processarSequencialmente) {
+            return await this.processarSequencialmentePorPeriodo(mesesParaProcessar);
+        }
         // Processar em grupos pequenos
         const batchSize = concorrenciaMaxima;
         for (let i = 0; i < mesesParaProcessar.length; i += batchSize) {
             const batch = mesesParaProcessar.slice(i, i + batchSize);
+            // 🎯 Solução 4: Logging detalhado do lote atual
+            console.log(`\n📦 Lote ${Math.floor(i / batchSize) + 1}/${Math.ceil(mesesParaProcessar.length / batchSize)}:`);
+            console.log(`   Processando:`, batch.map(b => `${b.cpf} - ${b.mes}/${b.ano}`));
             const promessas = batch.map(async ({ cpf, mes, ano }) => {
                 try {
                     const { inicioDoMes, inicioDoProximoMes } = (0, getInicioFimDoMes_1.getInicioFimDoMes)(mes, ano);
