@@ -23,7 +23,8 @@ app.use(cors({
         'http://172.20.48.1:5007',
         'http://172.19.3.52:5007',
         'http://172.19.3.52:3007',
-        'http://172.19.5.127:5007'
+        'http://172.19.5.127:5007',
+        '*'
     ], // origens específicas
     credentials: true // permite cookies e auth headers
 }))
