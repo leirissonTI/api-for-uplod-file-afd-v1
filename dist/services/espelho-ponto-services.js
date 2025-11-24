@@ -12,17 +12,23 @@ class EspelhoPontoService {
     }
     async getEspelhoDiarioPorMes(cpf, inicioDoMes) {
         try {
-            // Extrair mês e ano da data fornecida (ex: "02/2025")
-            const mesAno = `${String(inicioDoMes.getMonth() + 1).padStart(2, '0')}/${inicioDoMes.getFullYear()}`;
-            // Buscar registros no banco com CPF e filtro no campo `data`
+            // Extrair mês e ano da data fornecida, gerando versões com e sem zero à esquerda
+            const mesNumero = inicioDoMes.getMonth() + 1;
+            const anoNumero = inicioDoMes.getFullYear();
+            const mesAnoComZero = `${String(mesNumero).padStart(2, '0')}/${anoNumero}`;
+            const mesAnoSemZero = `${mesNumero}/${anoNumero}`;
+            // Buscar registros aceitando ambos formatos de mesAno (ex: "08/2025" e "8/2025")
             const registros = await prisma_1.prisma.espelhoDiario.findMany({
                 where: {
                     cpf: cpf,
-                    mesAno: mesAno
+                    mesAno: { in: [mesAnoComZero, mesAnoSemZero] }
+                },
+                orderBy: {
+                    data: 'asc'
                 }
             });
             if (!registros.length) {
-                throw new app_erro_1.AppError("Nenhum registro encontrado");
+                throw new app_erro_1.AppError(`Nenhum registro encontrado para CPF ${cpf} no mês ${mesAnoComZero}`);
             }
             return registros;
         }
