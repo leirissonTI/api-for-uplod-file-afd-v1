@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EspelhoPontoController = void 0;
 const espelho_ponto_services_1 = require("../services/espelho-ponto-services");
 const getInicioFimDoMes_1 = require("../utils/getInicioFimDoMes");
+const app_erro_1 = require("../utils/app-erro");
 class EspelhoPontoController {
     service = new espelho_ponto_services_1.EspelhoPontoService();
     async gerarEspelhoMensal(request, response) {
@@ -62,24 +63,31 @@ class EspelhoPontoController {
     async resgatarPontosDiariosDoMes(request, response) {
         try {
             const { cpf, mesAno } = request.params;
-            console.log(cpf, mesAno, 'estou aqui');
             // Validação básica de parâmetros
             if (!cpf || !mesAno) {
-                response.json({
+                return response.status(400).json({
                     success: false,
                     error: `É necessário informar os dados CPF e DATA.`,
                 });
             }
             // Validação do formato CPF (opcional)
             if (cpf.length !== 11 || !/^\d+$/.test(cpf)) {
-                response.json({
+                return response.status(400).json({
                     success: false,
                     error: `CPF deve conter exatamente 11 dígitos numéricos.`,
                 });
             }
+            // Validação do formato de data MM-AAAA
+            const formatoDataValido = /^\d{2}-\d{4}$/;
+            if (!formatoDataValido.test(mesAno)) {
+                return response.status(400).json({
+                    success: false,
+                    error: `Formato de data inválido. Use o formato MM-AAAA (ex: 01-2025).`,
+                });
+            }
             const mesAnoArray = mesAno.split('-');
             if (mesAnoArray.length !== 2) {
-                response.json({
+                return response.status(400).json({
                     success: false,
                     error: `Formato de data inválido. Use o formato MM-AAAA (ex: 01-2025).`,
                 });
@@ -87,7 +95,7 @@ class EspelhoPontoController {
             const [mes, ano] = mesAnoArray.map(Number);
             // Validação do formato da data
             if (isNaN(mes) || isNaN(ano) || mes < 1 || mes > 12 || ano < 2000 || ano > 2100) {
-                response.json({
+                return response.status(400).json({
                     success: false,
                     error: `Data inválida. Mês deve ser entre 01-12 e ano entre 2000-2100.`,
                 });
@@ -97,21 +105,28 @@ class EspelhoPontoController {
             const mesAtual = agora.getMonth() + 1;
             const anoAtual = agora.getFullYear();
             if (ano > anoAtual || (ano === anoAtual && mes > mesAtual)) {
-                response.status(400).json({
+                return response.status(400).json({
                     success: false,
                     error: `Não é possível gerar espelho para mês futuro. Mês/Ano atual: ${mesAtual.toString().padStart(2, '0')}/${anoAtual}`,
                 });
             }
             const { inicioDoMes, inicioDoProximoMes } = (0, getInicioFimDoMes_1.getInicioFimDoMes)(mes, ano);
             const espelho = await this.service.getEspelhoDiarioPorMes(cpf, inicioDoMes);
-            response.json({
+            return response.status(200).json({
                 success: true,
                 message: `Espelho mensal resgatado com sucesso para ${mes.toString().padStart(2, '0')}/${ano}.`,
                 data: espelho
             });
         }
         catch (error) {
-            response.json({
+            if (error instanceof app_erro_1.AppError) {
+                return response.status(404).json({
+                    success: false,
+                    error: `Nenhum registro encontrado para os parâmetros informados.`,
+                    message: `${error.message}`
+                });
+            }
+            return response.status(500).json({
                 success: false,
                 error: `Erro ao resgatar espelho mensal.`,
                 message: `${error.message}`
@@ -123,21 +138,21 @@ class EspelhoPontoController {
             const { cpf, mesAno } = request.params;
             // Validação básica de parâmetros
             if (!cpf || !mesAno) {
-                response.json({
+                return response.status(400).json({
                     success: false,
                     error: `É necessário informar os dados CPF e DATA.`,
                 });
             }
             // Validação do formato CPF (opcional)
-            if (cpf.length !== 11 || !/^\d+$/.test(cpf)) {
-                response.json({
+            if (cpf.replace(/\D/g, '').length !== 11 || !/^\d+$/.test(cpf)) {
+                return response.status(400).json({
                     success: false,
                     error: `CPF deve conter exatamente 11 dígitos numéricos.`,
                 });
             }
             const mesAnoArray = mesAno.split('-');
             if (mesAnoArray.length !== 2) {
-                response.json({
+                return response.status(400).json({
                     success: false,
                     error: `Formato de data inválido. Use o formato MM-AAAA (ex: 01-2025).`,
                 });
@@ -145,7 +160,7 @@ class EspelhoPontoController {
             const [mes, ano] = mesAnoArray.map(Number);
             // Validação do formato da data
             if (isNaN(mes) || isNaN(ano) || mes < 1 || mes > 12 || ano < 2000 || ano > 2100) {
-                response.json({
+                return response.status(400).json({
                     success: false,
                     error: `Data inválida. Mês deve ser entre 01-12 e ano entre 2000-2100.`,
                 });
@@ -160,15 +175,15 @@ class EspelhoPontoController {
                     error: `Não é possível gerar espelho para mês futuro. Mês/Ano atual: ${mesAtual.toString().padStart(2, '0')}/${anoAtual}`,
                 });
             }
-            const espelho = await this.service.getEspelhoFormado(cpf, String(mes), String(ano));
-            response.json({
+            const espelho = await this.service.getEspelhoFormado(cpf.replace(/\D/g, ''), String(mes), String(ano));
+            return response.status(200).json({
                 success: true,
                 message: `Espelho mensal do mês: ${mes.toString().padStart(2, '0')}/${ano}.`,
                 data: espelho
             });
         }
         catch (error) {
-            response.json({
+            return response.status(500).json({
                 success: false,
                 error: `Erro ao resgatar espelho mensal.`,
                 message: `${error.message}`

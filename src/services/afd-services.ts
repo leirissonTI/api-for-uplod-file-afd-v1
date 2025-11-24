@@ -366,17 +366,17 @@ export class AfdService {
                 isolationLevel: 'Serializable' // Maior consistência
             });
 
-            // Gerar espelho automaticamente apenas se houver novos registros
-            const totalRegistrosProcessados = registros.filter(r => r.tipo === '3' && r.parsed).length;
+            // Gerar espelhos automaticamente com base nos registros deste upload
+            const totalRegistrosProcessados = registrosValidos.filter(r => r.tipo === '3' && r.parsed).length;
             if (totalRegistrosProcessados > 0) {
-                console.log(`🔄 Iniciando geração automática de espelhos para ${totalRegistrosProcessados} registros...`);
+                console.log(`🔄 Iniciando geração automática de espelhos com base no lote (${totalRegistrosProcessados} marcações válidas)...`);
                 
                 // Executar em background para não bloquear o response
                 setImmediate(async () => {
                     try {
-                        await this.RegistrarEspelhoAutomaticoOtimizado();
+                        await this.gerarEspelhosParaBatch(registrosValidos);
                     } catch (error) {
-                        console.error('❌ Erro na geração automática de espelhos:', error);
+                        console.error('❌ Erro na geração automática de espelhos (batch):', error);
                     }
                 });
             }
@@ -475,6 +475,49 @@ export class AfdService {
 
         } catch (error) {
             console.error("❌ Erro no registro automático otimizado:", error);
+            throw error;
+        }
+    }
+
+    private async gerarEspelhosParaBatch(registros: TRegistroAFD[]) {
+        try {
+            console.log('📦 Gerando espelhos a partir do lote enviado...');
+            const mapaCpfMes = new Map<string, Set<string>>();
+
+            for (const r of registros) {
+                if (r.tipo === '3' && r.parsed && r.parsed.dataCompleta && r.parsed.cpfEmpregado) {
+                    const d: Date = r.parsed.dataCompleta as Date;
+                    if (!(d instanceof Date) || isNaN(d.getTime())) continue;
+                    const mes = String(d.getMonth() + 1).padStart(2, '0');
+                    const ano = d.getFullYear();
+                    const mesAno = `${mes}/${ano}`;
+
+                    const cpf = String(r.parsed.cpfEmpregado);
+                    if (!mapaCpfMes.has(cpf)) mapaCpfMes.set(cpf, new Set<string>());
+                    mapaCpfMes.get(cpf)!.add(mesAno);
+                }
+            }
+
+            const tarefas: Promise<void>[] = [];
+            for (const [cpf, meses] of mapaCpfMes.entries()) {
+                for (const mesAno of meses) {
+                    const [mesStr, anoStr] = mesAno.split('/');
+                    const mes = Number(mesStr);
+                    const ano = Number(anoStr);
+                    const { inicioDoMes, inicioDoProximoMes } = getInicioFimDoMes(mes, ano);
+                    tarefas.push(this.serviceEspelhoPonto.gerarEspelhoMensal(cpf, inicioDoMes, inicioDoProximoMes));
+                }
+            }
+
+            if (tarefas.length === 0) {
+                console.log('📭 Nenhum espelho necessário para este lote.');
+                return;
+            }
+
+            await Promise.all(tarefas);
+            console.log(`✅ Espelhos gerados para ${tarefas.length} combinações CPF/mês do lote.`);
+        } catch (error: any) {
+            console.error('❌ Erro ao gerar espelhos do lote:', error);
             throw error;
         }
     }
