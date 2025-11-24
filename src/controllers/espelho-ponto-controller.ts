@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import { EspelhoPontoService } from '../services/espelho-ponto-services'
 import { getInicioFimDoMes } from '../utils/getInicioFimDoMes'
+import { AppError } from '../utils/app-erro'
 
 export class EspelhoPontoController {
     private service = new EspelhoPontoService()
@@ -75,7 +76,7 @@ export class EspelhoPontoController {
 
             // Validação básica de parâmetros
             if (!cpf || !mesAno) {
-                 response.status(400).json({
+                return response.status(400).json({
                     success: false,
                     error: `É necessário informar os dados CPF e DATA.`,
                 })
@@ -83,7 +84,7 @@ export class EspelhoPontoController {
 
             // Validação do formato CPF (opcional)
             if (cpf.length !== 11 || !/^\d+$/.test(cpf)) {
-                 response.status(400).json({
+                return response.status(400).json({
                     success: false,
                     error: `CPF deve conter exatamente 11 dígitos numéricos.`,
                 })
@@ -92,7 +93,7 @@ export class EspelhoPontoController {
             // Validação do formato de data MM-AAAA
             const formatoDataValido = /^\d{2}-\d{4}$/
             if (!formatoDataValido.test(mesAno)) {
-                 response.status(400).json({
+                return response.status(400).json({
                     success: false,
                     error: `Formato de data inválido. Use o formato MM-AAAA (ex: 01-2025).`,
                 })
@@ -100,7 +101,7 @@ export class EspelhoPontoController {
 
             const mesAnoArray = mesAno.split('-')
             if (mesAnoArray.length !== 2) {
-                 response.status(400).json({
+                return response.status(400).json({
                     success: false,
                     error: `Formato de data inválido. Use o formato MM-AAAA (ex: 01-2025).`,
                 })
@@ -110,7 +111,7 @@ export class EspelhoPontoController {
 
             // Validação do formato da data
             if (isNaN(mes) || isNaN(ano) || mes < 1 || mes > 12 || ano < 2000 || ano > 2100) {
-                 response.status(400).json({
+                return response.status(400).json({
                     success: false,
                     error: `Data inválida. Mês deve ser entre 01-12 e ano entre 2000-2100.`,
                 })
@@ -122,7 +123,7 @@ export class EspelhoPontoController {
             const anoAtual = agora.getFullYear()
 
             if (ano > anoAtual || (ano === anoAtual && mes > mesAtual)) {
-                 response.status(400).json({
+                return response.status(400).json({
                     success: false,
                     error: `Não é possível gerar espelho para mês futuro. Mês/Ano atual: ${mesAtual.toString().padStart(2, '0')}/${anoAtual}`,
                 })
@@ -132,14 +133,21 @@ export class EspelhoPontoController {
 
             const espelho = await this.service.getEspelhoDiarioPorMes(cpf, inicioDoMes)
 
-             response.status(200).json({
+            return response.status(200).json({
                 success: true,
                 message: `Espelho mensal resgatado com sucesso para ${mes.toString().padStart(2, '0')}/${ano}.`,
                 data: espelho
             })
 
         } catch (error: any) {
-             response.status(500).json({
+            if (error instanceof AppError) {
+                return response.status(404).json({
+                    success: false,
+                    error: `Nenhum registro encontrado para os parâmetros informados.`,
+                    message: `${error.message}`
+                })
+            }
+            return response.status(500).json({
                 success: false,
                 error: `Erro ao resgatar espelho mensal.`,
                 message: `${error.message}`
@@ -153,15 +161,15 @@ export class EspelhoPontoController {
 
             // Validação básica de parâmetros
             if (!cpf || !mesAno) {
-                response.json({
+                return response.status(400).json({
                     success: false,
                     error: `É necessário informar os dados CPF e DATA.`,
                 })
             }
 
             // Validação do formato CPF (opcional)
-            if (cpf.length !== 11 || !/^\d+$/.test(cpf)) {
-                response.json({
+            if (cpf.replace(/\D/g, '').length !== 11 || !/^\d+$/.test(cpf)) {
+                return response.status(400).json({
                     success: false,
                     error: `CPF deve conter exatamente 11 dígitos numéricos.`,
                 })
@@ -169,7 +177,7 @@ export class EspelhoPontoController {
 
             const mesAnoArray = mesAno.split('-')
             if (mesAnoArray.length !== 2) {
-                response.json({
+                return response.status(400).json({
                     success: false,
                     error: `Formato de data inválido. Use o formato MM-AAAA (ex: 01-2025).`,
                 })
@@ -179,7 +187,7 @@ export class EspelhoPontoController {
 
             // Validação do formato da data
             if (isNaN(mes) || isNaN(ano) || mes < 1 || mes > 12 || ano < 2000 || ano > 2100) {
-                response.json({
+                return response.status(400).json({
                     success: false,
                     error: `Data inválida. Mês deve ser entre 01-12 e ano entre 2000-2100.`,
                 })
@@ -197,16 +205,16 @@ export class EspelhoPontoController {
                 })
             }
 
-            const espelho = await this.service.getEspelhoFormado(cpf, String(mes), String(ano))
+            const espelho = await this.service.getEspelhoFormado(cpf.replace(/\D/g, ''), String(mes), String(ano))
 
-            response.json({
+            return response.status(200).json({
                 success: true,
                 message: `Espelho mensal do mês: ${mes.toString().padStart(2, '0')}/${ano}.`,
                 data: espelho
             })
 
         } catch (error: any) {
-            response.json({
+            return response.status(500).json({
                 success: false,
                 error: `Erro ao resgatar espelho mensal.`,
                 message: `${error.message}`
