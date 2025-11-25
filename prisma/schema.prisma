@@ -159,3 +159,17 @@ model BancoDeHoras {
   @@unique([cpf])
   @@map("banco_de_horas")
 }
+
+
+// esse modelo representa o recesso de um funcionário no período de um ano
+model Recesso {
+  id String @id @default(uuid())
+  ano DateTime @map("ano")
+  descricao String @map("descricao")
+  processoSei String @map("processo_sei")
+  abertoParaFrequencia Boolean @default(false) @map("aberto_para_frequencia")
+  DataInicial DateTime @map("data_inicial")
+  dataFinal DateTime @map("data_final")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+}
