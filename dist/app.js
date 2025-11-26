@@ -27,7 +27,9 @@ exports.app.use((0, cors_1.default)({
         'http://172.20.48.1:5007',
         'http://172.19.3.52:5007',
         'http://172.19.3.52:3007',
-        'http://172.19.5.127:5007'
+        'http://172.19.5.127:5007',
+        'http://localhost:3004',
+        'http://172.19.5.114:3004',
     ], // origens específicas
     credentials: true // permite cookies e auth headers
 }));
