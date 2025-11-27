@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const SchemaUpdateRecesso = z.object({
-       ano: z.coerce.date().optional(),
+       ano:  z.coerce.string().optional(),
        descricao: z.string().min(1).optional(),
        processoSei: z.string().min(1).optional(),
        abertoParaFrequencia: z.boolean().optional(),

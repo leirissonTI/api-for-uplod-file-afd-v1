@@ -30,7 +30,7 @@ export class RecessoService {
      * @returns Uma promessa que resolve para um array de recessos.
      */
     async getAllRecesso(): Promise<TRecesso[]> {
-        const itens = await this.prismaService.recesso.findMany();
+        const itens= await this.prismaService.recesso.findMany();
         return itens.map((i) => this.mapToTRecesso(i));
     }
 
@@ -40,8 +40,9 @@ export class RecessoService {
      * @returns Uma promessa que resolve para o recesso criado.
      */
     async createRecesso(recesso: CreateRecessoDto) {
+        console.log('criando um recesso')
+        const anoDate = new Date(recesso.ano).toISOString()
         const {
-            ano,
             descricao,
             processoSei,
             abertoParaFrequencia,
@@ -52,7 +53,7 @@ export class RecessoService {
         try {
             await this.prismaService.recesso.create({
                 data: {
-                    ano,
+                    ano: anoDate,
                     descricao,
                     processoSei,
                     abertoParaFrequencia,
@@ -105,7 +106,7 @@ export class RecessoService {
             throw new Error(`Recesso com ID ${id} não foi encontrado.`)
         }
         try {
-            await this.prismaService.recesso.update({
+            return await this.prismaService.recesso.update({
                 where: {
                     id: oRecessoExiste.id,
                 },

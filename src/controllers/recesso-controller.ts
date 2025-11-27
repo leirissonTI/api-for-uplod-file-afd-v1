@@ -69,6 +69,7 @@ export class RecessoController {
      * @param response - Resposta HTTP com os dados do recesso criado ou mensagens de erro.
      */
     async createRecesso(request: Request, response: Response) {
+        console.log(request.body)
         try {
             const recesso: CreateRecessoDto = request.body
             // Validar os dados do recesso usando o schema do prisma

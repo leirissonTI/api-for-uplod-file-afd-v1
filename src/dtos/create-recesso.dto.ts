@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 
 export const createRecessoSchema = z.object({
-    ano: z.coerce.date(),
+    ano: z.coerce.string(),
     descricao: z.string().min(1),
     processoSei: z.string().min(1),
     abertoParaFrequencia: z.boolean(),
