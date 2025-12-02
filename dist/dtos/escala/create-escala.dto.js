@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createEscalaDtoSchema = void 0;
+const zod_1 = require("zod");
+exports.createEscalaDtoSchema = zod_1.z.object({
+    nome: zod_1.z.string().min(1, "O nome é obrigatório."),
+    lotacaoId: zod_1.z.string().min(1, "A lotação é obrigatória."),
+    recessoId: zod_1.z.string().min(1, "O recesso é obrigatório."),
+    receberPagamento: zod_1.z.boolean().default(false),
+    escalado: zod_1.z.boolean().default(false),
+});

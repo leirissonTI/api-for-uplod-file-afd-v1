@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.escalaRoutes = void 0;
+const express_1 = require("express");
+const escala_controller_1 = require("../controllers/escala-controller");
+const escala_service_1 = require("../services/escala-service");
+const router = (0, express_1.Router)();
+const escalaController = new escala_controller_1.EscalaController(new escala_service_1.EscalaService());
+exports.escalaRoutes = router;
+exports.escalaRoutes.get("/all", (req, res) => escalaController.getAllEscalas(req, res));

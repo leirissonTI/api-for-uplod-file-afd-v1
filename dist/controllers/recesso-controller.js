@@ -4,6 +4,7 @@ exports.RecessoController = void 0;
 const zod_1 = require("zod");
 const create_recesso_dto_1 = require("../dtos/create-recesso.dto");
 const id_recesso_dto_1 = require("../dtos/id-recesso.dto");
+const update_recesso_dto_1 = require("../dtos/update-recesso.dto");
 class RecessoController {
     recessoService;
     constructor(recessoService) {
@@ -94,12 +95,12 @@ class RecessoController {
      */
     async updateRecesso(request, response) {
         try {
-            const validatedRecesso = id_recesso_dto_1.SchemaIdRecesso.parse({ id: request.params.id });
-            const recesso = request.body;
-            await this.recessoService.updateRecesso(validatedRecesso, recesso);
+            const validaIdRecesso = id_recesso_dto_1.SchemaIdRecesso.parse({ id: request.params.id });
+            const recesso = update_recesso_dto_1.SchemaUpdateRecesso.parse(request.body);
+            await this.recessoService.updateRecesso(validaIdRecesso, recesso);
             response.status(200).json({
                 success: true,
-                message: `Recesso com ID ${validatedRecesso.id} foi atualizado com sucesso.`,
+                message: `Recesso com ID ${validaIdRecesso.id} foi atualizado com sucesso.`,
                 data: recesso
             });
         }

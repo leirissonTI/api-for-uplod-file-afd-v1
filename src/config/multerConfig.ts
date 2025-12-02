@@ -13,7 +13,7 @@ const storage = multer.diskStorage({
 
 // Filtro opcional para aceitar apenas certos tipos de arquivo
 const fileFilter = (req: any, file: any, cb: any) => {
-  if (file.mimetype === 'text/plain' || file.mimetype === 'application/octet-stream') {
+  if (file.mimetype === 'text/plain' || file.mimetype === 'application/octet-stream' || file.mimetype === 'text/csv') {
     cb(null, true)
   } else {
     cb(new Error('Tipo de arquivo não permitido'), false)

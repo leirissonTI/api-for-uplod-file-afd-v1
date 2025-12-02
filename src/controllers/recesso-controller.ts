@@ -3,7 +3,7 @@ import { CreateRecessoDto, createRecessoSchema } from "../dtos/create-recesso.dt
 import { SchemaIdRecesso, TIdRecessoDto } from "../dtos/id-recesso.dto";
 import { RecessoService } from "../services/recesso-service";
 import { Request, Response } from 'express'
-import { TUpdateRecessoDto } from "../dtos/update-recesso.dto";
+import { TUpdateRecessoDto, SchemaUpdateRecesso } from "../dtos/update-recesso.dto";
 
 
 export class RecessoController {
@@ -69,7 +69,6 @@ export class RecessoController {
      * @param response - Resposta HTTP com os dados do recesso criado ou mensagens de erro.
      */
     async createRecesso(request: Request, response: Response) {
-        console.log(request.body)
         try {
             const recesso: CreateRecessoDto = request.body
             // Validar os dados do recesso usando o schema do prisma
@@ -96,12 +95,12 @@ export class RecessoController {
      */
     async updateRecesso(request: Request, response: Response) {
         try {
-            const validatedRecesso: TIdRecessoDto = SchemaIdRecesso.parse({ id: request.params.id as string })
-            const recesso: TUpdateRecessoDto = request.body
-            await this.recessoService.updateRecesso(validatedRecesso, recesso)
+            const validaIdRecesso: TIdRecessoDto = SchemaIdRecesso.parse({ id: request.params.id as string })
+            const recesso: TUpdateRecessoDto = SchemaUpdateRecesso.parse(request.body)
+            await this.recessoService.updateRecesso(validaIdRecesso, recesso)
             response.status(200).json({
                 success: true,
-                message: `Recesso com ID ${validatedRecesso.id} foi atualizado com sucesso.`,
+                message: `Recesso com ID ${validaIdRecesso.id} foi atualizado com sucesso.`,
                 data: recesso
             })
         } catch (error: any) {

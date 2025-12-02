@@ -161,7 +161,27 @@ model BancoDeHoras {
 }
 
 
-// esse modelo representa o recesso de um funcionário no período de um ano
+// modelos para trabalhar com futures do recesso
+/*
+recesso
+role
+solicitaçõesStatus
+Chefia
+*/
+
+enum Role {
+  USER
+  CHEFE
+  ADMIN
+}
+
+enum SolicitacaoStatus {
+  PENDENTE
+  APROVADA
+  RECUSADA
+  CANCELADA
+}
+
 model Recesso {
   id String @id @default(uuid())
   ano DateTime @map("ano")
@@ -172,4 +192,74 @@ model Recesso {
   dataFinal DateTime @map("data_final")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+
+  escalas     Escala[]
+  @@index([ano])
+}
+
+model Lotacao {
+  id    String @id @default(uuid())
+  nome  String
+  codigo String? 
+
+  escalas Escala[]
+  @@unique([nome])
+}
+
+model Escala {
+  id           String   @id @default(uuid())
+  nome         String
+  lotacaoId    String
+  recebePagamento Boolean @default(false)
+  escalado     Boolean @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime?
+  recessoId    String
+
+  recesso      Recesso @relation(fields: [recessoId], references: [id], onDelete: Cascade)
+  lotacao      Lotacao @relation(fields: [lotacaoId], references: [id], onDelete: Restrict)
+  solicitacoes Solicitacao[]
+
+  @@index([recessoId])
+  @@index([lotacaoId])
+  @@unique([nome, recessoId]) // evita duplicação de nomes de escala no mesmo recesso
+}
+
+model Funcionario {
+  id         String  @id @default(uuid())
+  nome       String
+  matricula  String  @unique
+  email      String? @unique
+  role       Role     @default(USER)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime?
+  managerId  String? 
+
+  manager    Funcionario? @relation("ManagerRelation", fields: [managerId], references: [id])
+  subordinates Funcionario[] @relation("ManagerRelation")
+
+  solicitacoesCriadas Solicitacao[] @relation("Criador")
+  solicitacoesAprovadas Solicitacao[] @relation("Aprovador")
+
+  @@index([role])
+}
+
+model Solicitacao {
+  id           String @id @default(uuid())
+  escalaId     String
+  criadorId    String
+  aprovadorId  String?    // chefe que aprovou/recusou; null enquanto PENDENTE
+  status       SolicitacaoStatus @default(PENDENTE)
+  motivo       String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime?
+
+  escala        Escala     @relation(fields: [escalaId], references: [id], onDelete: Cascade)
+  criador       Funcionario @relation("Criador", fields: [criadorId], references: [id])
+  aprovador     Funcionario? @relation("Aprovador", fields: [aprovadorId], references: [id])
+
+  @@index([escalaId])
+  @@index([criadorId])
+  @@index([aprovadorId])
+  @@index([status])
 }
