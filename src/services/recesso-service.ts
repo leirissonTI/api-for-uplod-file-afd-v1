@@ -161,6 +161,74 @@ export class RecessoService {
         })
     }
 
+    async criarSolicitacaoPorMatriculaChefe(params: { escalaId: string; criadorId: string; chefeMatricula: string; motivo?: string }) {
+        const { escalaId, criadorId, chefeMatricula, motivo } = params
+        try {
+            const chefe = await this.prismaService.funcionario.findUnique({
+                where: { matricula: chefeMatricula },
+                select: { id: true, role: true }
+            })
+            if (!chefe) {
+                throw new Error(`Chefe com matrícula ${chefeMatricula} não encontrado.`)
+            }
+            const solicitacao = await this.prismaService.solicitacao.create({
+                data: {
+                    escalaId,
+                    criadorId,
+                    aprovadorId: chefe.id,
+                    motivo: motivo ?? null,
+                }
+            })
+            return solicitacao
+        } catch (error: any) {
+            throw new Error(`Erro ao criar solicitação por matrícula do chefe. ${error.message}`)
+        }
+    }
+
+    async criarEscalaParaRecesso(params: { recessoId: string; nome: string; lotacaoId: string; dataEscala: Date | string; recebePagamento?: boolean; escalado?: boolean }) {
+        const { recessoId, nome, lotacaoId, dataEscala, recebePagamento, escalado } = params
+        try {
+            const recesso = await this.prismaService.recesso.findUnique({ where: { id: recessoId }, select: { id: true } })
+            if (!recesso) throw new Error(`Recesso ${recessoId} não encontrado.`)
+            const lotacao = await this.prismaService.lotacao.findUnique({ where: { id: lotacaoId }, select: { id: true } })
+            if (!lotacao) throw new Error(`Lotação ${lotacaoId} não encontrada.`)
+            const dataValida = (dataEscala instanceof Date) ? dataEscala : new Date(dataEscala)
+            if (!(dataValida instanceof Date) || isNaN(dataValida.getTime())) {
+                throw new Error('dataEscala inválida. Use uma data ISO válida (YYYY-MM-DD).')
+            }
+            const escala = await this.prismaService.escala.create({
+                data: {
+                    nome,
+                    lotacaoId,
+                    recessoId,
+                    dataEscala: dataValida,
+                    recebePagamento: recebePagamento ?? false,
+                    escalado: escalado ?? false,
+                }
+            })
+            return escala
+        } catch (error: any) {
+            throw new Error(`Erro ao criar escala para recesso. ${error.message}`)
+        }
+    }
+
+    async associarEscalaAoRecesso(params: { escalaId: string; recessoId: string }) {
+        const { escalaId, recessoId } = params
+        try {
+            const recesso = await this.prismaService.recesso.findUnique({ where: { id: recessoId }, select: { id: true } })
+            if (!recesso) throw new Error(`Recesso ${recessoId} não encontrado.`)
+            const escalaExiste = await this.prismaService.escala.findUnique({ where: { id: escalaId }, select: { id: true } })
+            if (!escalaExiste) throw new Error(`Escala ${escalaId} não encontrada.`)
+            const escala = await this.prismaService.escala.update({
+                where: { id: escalaId },
+                data: { recessoId }
+            })
+            return escala
+        } catch (error: any) {
+            throw new Error(`Erro ao associar escala ao recesso. ${error.message}`)
+        }
+    }
+
 
 
 }

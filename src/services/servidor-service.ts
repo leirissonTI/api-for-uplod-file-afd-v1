@@ -72,6 +72,14 @@ export class ServidorService {
         }
     }
 
+    async getServidorById(id: string){
+        try {
+            return await this.verificarExistenciaServidor(id)
+        } catch (error: any) {
+            throw new Error(`Erro ao buscar servidor por id. ${error.message}`)
+        }
+    }
+
     /**
      * Importa servidores em lote.
      * @param registros - Os registros de servidor a serem importados.
@@ -124,6 +132,12 @@ export class ServidorService {
         return { recebidos, inseridos, ignorados, invalidos, erros }
     }
 
+    /**
+     * Atualiza um servidor existente.
+     * @param id - O ID do servidor a ser atualizado.
+     * @param servidor - Os dados do servidor a serem atualizados.
+     * @returns Uma promessa que resolve para o servidor atualizado.
+     */
     async updateServidor(id: string, servidor: UpdateServidorDto){
         try {
             const { nome, email, matricula, role } = servidor
@@ -142,6 +156,35 @@ export class ServidorService {
             })
         } catch (error: any) {
             throw new Error(`Erro ao atualizar servidor. ${error.message}`)
+        }
+    }
+
+    async deleteServidor(id: string){
+        try {
+            const servidor  = await this.verificarExistenciaServidor(id)
+            return await this.prismaService.funcionario.delete({
+                where: {
+                    id: servidor.id,
+                }
+            })
+        } catch (error: any) {
+            throw new Error(`Erro ao deletar servidor. ${error.message}`)
+        }
+    }  
+
+    private async verificarExistenciaServidor(id: string){
+        try {
+            const servidor = await this.prismaService.funcionario.findUnique({
+                where: {
+                    id,
+                }
+            })
+            if (!servidor) {
+                throw new Error(`Servidor com id ${id} não encontrado.`)
+            }
+            return servidor
+        } catch (error: any) {
+            throw new Error(`Erro ao verificar existência de servidor. ${error.message}`)
         }
     }
 }

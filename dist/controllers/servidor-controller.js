@@ -8,6 +8,7 @@ const zod_1 = require("zod");
 const create_servidor_dto_1 = require("../dtos/servidor/create-servidor.dto");
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
+const update_servidor_dto_1 = require("../dtos/servidor/update-servidor.dto");
 class ServidorController {
     servidorService;
     constructor(servidorService) {
@@ -85,6 +86,49 @@ class ServidorController {
                 return res.status(400).json({ success: false, error: 'Erro de validação.', message: error.issues.map(i => i.message).join(', ') });
             }
             return res.status(500).json({ success: false, error: 'Erro ao importar servidores em lote.', message: `${error.message}` });
+        }
+    }
+    async getServidorById(req, res) {
+        try {
+            const servidor = await this.servidorService.getServidorById(req.params.id);
+            return res.status(200).json({ success: true, message: 'Servidor resgatado com sucesso.', data: servidor });
+        }
+        catch (error) {
+            return res.status(500).json({ success: false, error: 'Erro ao buscar servidor por id.', message: `${error.message}` });
+        }
+    }
+    /**
+     * Atualiza um servidor existente.
+     * @param req - O objeto de solicitação HTTP.
+     * @param res - O objeto de resposta HTTP.
+     * @returns Uma promessa que resolve para o servidor atualizado.
+     */
+    async updateServidor(req, res) {
+        try {
+            const payload = update_servidor_dto_1.updateServidorSchema.parse(req.body);
+            const atualizado = await this.servidorService.updateServidor(req.params.id, payload);
+            return res.status(200).json({ success: true, message: 'Servidor atualizado com sucesso.', data: atualizado });
+        }
+        catch (error) {
+            if (error instanceof zod_1.z.ZodError) {
+                return res.status(400).json({ success: false, error: 'Erro de validação.', message: error.issues.map(i => i.message).join(', ') });
+            }
+            return res.status(500).json({ success: false, error: 'Erro ao atualizar servidor.', message: `${error.message}` });
+        }
+    }
+    /**
+     * Deleta um servidor existente.
+     * @param req - O objeto de solicitação HTTP.
+     * @param res - O objeto de resposta HTTP.
+     * @returns Uma promessa que resolve para o servidor deletado.
+     */
+    async deleteServidor(req, res) {
+        try {
+            await this.servidorService.deleteServidor(req.params.id);
+            return res.status(200).json({ success: true, message: 'Servidor deletado com sucesso.' });
+        }
+        catch (error) {
+            return res.status(500).json({ success: false, error: 'Erro ao deletar servidor.', message: `${error.message}` });
         }
     }
 }

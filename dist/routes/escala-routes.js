@@ -7,4 +7,7 @@ const escala_service_1 = require("../services/escala-service");
 const router = (0, express_1.Router)();
 const escalaController = new escala_controller_1.EscalaController(new escala_service_1.EscalaService());
 exports.escalaRoutes = router;
-exports.escalaRoutes.get("/all", (req, res) => escalaController.getAllEscalas(req, res));
+const getAllHandler = (req, res) => { escalaController.getAllEscalas(req, res); };
+const createHandler = (req, res) => { escalaController.createEscala(req, res); };
+exports.escalaRoutes.get("/all", getAllHandler);
+exports.escalaRoutes.post("/create", createHandler);

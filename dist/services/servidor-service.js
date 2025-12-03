@@ -73,6 +73,14 @@ class ServidorService {
             throw new Error(`Erro ao criar servidor. ${error.message}`);
         }
     }
+    async getServidorById(id) {
+        try {
+            return await this.verificarExistenciaServidor(id);
+        }
+        catch (error) {
+            throw new Error(`Erro ao buscar servidor por id. ${error.message}`);
+        }
+    }
     /**
      * Importa servidores em lote.
      * @param registros - Os registros de servidor a serem importados.
@@ -125,6 +133,62 @@ class ServidorService {
         const res2 = semEmail.length ? await this.prismaService.funcionario.createMany({ data: semEmail, skipDuplicates: true }) : { count: 0 };
         const inseridos = (res1.count || 0) + (res2.count || 0);
         return { recebidos, inseridos, ignorados, invalidos, erros };
+    }
+    /**
+     * Atualiza um servidor existente.
+     * @param id - O ID do servidor a ser atualizado.
+     * @param servidor - Os dados do servidor a serem atualizados.
+     * @returns Uma promessa que resolve para o servidor atualizado.
+     */
+    async updateServidor(id, servidor) {
+        try {
+            const { nome, email, matricula, role } = servidor;
+            const emailRegex = /.+@.+\..+/;
+            const emailFinal = email && emailRegex.test(email) ? email.trim().toLowerCase() : undefined;
+            return await this.prismaService.funcionario.update({
+                where: {
+                    id,
+                },
+                data: {
+                    nome,
+                    email: emailFinal,
+                    matricula,
+                    role: role,
+                }
+            });
+        }
+        catch (error) {
+            throw new Error(`Erro ao atualizar servidor. ${error.message}`);
+        }
+    }
+    async deleteServidor(id) {
+        try {
+            const servidor = await this.verificarExistenciaServidor(id);
+            return await this.prismaService.funcionario.delete({
+                where: {
+                    id: servidor.id,
+                }
+            });
+        }
+        catch (error) {
+            throw new Error(`Erro ao deletar servidor. ${error.message}`);
+        }
+    }
+    async verificarExistenciaServidor(id) {
+        try {
+            const servidor = await this.prismaService.funcionario.findUnique({
+                where: {
+                    id,
+                }
+            });
+            if (!servidor) {
+                throw new Error(`Servidor com id ${id} não encontrado.`);
+            }
+            return servidor;
+        }
+        catch (error) {
+            throw new Error(`Erro ao verificar existência de servidor. ${error.message}`);
+        }
     }
 }
 exports.ServidorService = ServidorService;

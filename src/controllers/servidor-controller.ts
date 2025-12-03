@@ -4,6 +4,7 @@ import { z } from "zod";
 import { createSchemaServidor } from "../dtos/servidor/create-servidor.dto";
 import fs from "fs";
 import path from "path";
+import { updateServidorSchema } from "../dtos/servidor/update-servidor.dto";
 
 
 
@@ -90,16 +91,45 @@ export class ServidorController {
         }
     }
 
-    // async updateServidor(req: Request, res: Response){
-    //     try {
-    //         const payload = createSchemaServidor.parse(req.body)
-    //         const atualizado = await this.servidorService.updateServidor(req.params.id, payload)
-    //         return res.status(200).json({ success: true, message: 'Servidor atualizado com sucesso.', data: atualizado })
-    //     } catch (error: any) {
-    //         if (error instanceof z.ZodError) {
-    //             return res.status(400).json({ success: false, error: 'Erro de validação.', message: error.issues.map(i => i.message).join(', ') })
-    //         }
-    //         return res.status(500).json({ success: false, error: 'Erro ao atualizar servidor.', message: `${error.message}` })
-    //     }
-    // }
+    async getServidorById(req: Request, res: Response){
+        try {
+            const servidor = await this.servidorService.getServidorById(req.params.id)
+            return res.status(200).json({ success: true, message: 'Servidor resgatado com sucesso.', data: servidor })
+        } catch (error: any) {
+            return res.status(500).json({ success: false, error: 'Erro ao buscar servidor por id.', message: `${error.message}` })
+        }
+    }
+    /**
+     * Atualiza um servidor existente.
+     * @param req - O objeto de solicitação HTTP.
+     * @param res - O objeto de resposta HTTP.
+     * @returns Uma promessa que resolve para o servidor atualizado.
+     */
+    async updateServidor(req: Request, res: Response){
+        try {
+            const payload = updateServidorSchema.parse(req.body)
+            const atualizado = await this.servidorService.updateServidor(req.params.id, payload)
+            return res.status(200).json({ success: true, message: 'Servidor atualizado com sucesso.', data: atualizado })
+        } catch (error: any) {
+            if (error instanceof z.ZodError) {
+                return res.status(400).json({ success: false, error: 'Erro de validação.', message: error.issues.map(i => i.message).join(', ') })
+            }
+            return res.status(500).json({ success: false, error: 'Erro ao atualizar servidor.', message: `${error.message}` })
+        }
+    }
+    
+    /**
+     * Deleta um servidor existente.
+     * @param req - O objeto de solicitação HTTP.
+     * @param res - O objeto de resposta HTTP.
+     * @returns Uma promessa que resolve para o servidor deletado.
+     */
+    async deleteServidor(req: Request, res: Response){
+        try {
+            await this.servidorService.deleteServidor(req.params.id)
+            return res.status(200).json({ success: true, message: 'Servidor deletado com sucesso.' })
+        } catch (error: any) {
+            return res.status(500).json({ success: false, error: 'Erro ao deletar servidor.', message: `${error.message}` })
+        }
+    }
 }

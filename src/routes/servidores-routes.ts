@@ -13,8 +13,6 @@ servidorRoutes.get('/all', ((req: Request, res: Response) => { servidorControlle
 servidorRoutes.post('/create', ((req: Request, res: Response) => { servidorController.createServidor(req, res) }) as RequestHandler)
 servidorRoutes.post('/create/bulk', upload.single('file'), ((req: Request, res: Response) => { servidorController.importarServidoresEmLote(req, res) }) as RequestHandler)
 servidorRoutes.post('/create', ((req: Request, res: Response) => { servidorController.createServidor(req, res) }) as RequestHandler)
-
-
-
-
-
+servidorRoutes.get('/:id', ((req: Request, res: Response) => { servidorController.getServidorById(req, res) }) as RequestHandler)
+servidorRoutes.put('/:id', ((req: Request, res: Response) => { servidorController.updateServidor(req, res) }) as RequestHandler)
+servidorRoutes.delete('/:id', ((req: Request, res: Response) => { servidorController.deleteServidor(req, res) }) as RequestHandler)

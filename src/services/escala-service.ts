@@ -1,7 +1,8 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../generated/prisma";
 import { prisma } from "../config/prisma";
 import { TCreateEscalaDto } from "../types/TEscala";
-import { EscalaEntity } from "../entitys/escala.entity";
+import { TUpdateEscalaDto } from "../dtos/escala/update-escala.dto";
+
 
 
 
@@ -15,8 +16,7 @@ export class EscalaService {
      */
     async getAllEscalas() {
         try {
-            const escala: EscalaEntity[] =  await this.prismaService.escala.findMany()
-            return  escala
+            return  await this.prismaService.escala.findMany()
         } catch (error) {
             throw new Error(`Erro ao buscar todas as escalas. ${error}`)
         }
@@ -44,10 +44,73 @@ export class EscalaService {
      * @param data - Os dados da escala a ser criada.
      * @returns Uma promessa que resolve para a escala criada.
      */
-    async create(data: TCreateEscalaDto) {
-        return await this.prismaService.escala.create({
-            data,
-        })
+    async createEscalaServidor(data: TCreateEscalaDto) {
+        const { nome, lotacaoId, recessoId, dataEscala, receberPagamento, escalado } = data
+        const recesso = await this.prismaService.recesso.findUnique({ where: { id: recessoId }, select: { id: true } })
+        if (!recesso) throw new Error(`Recesso ${recessoId} não encontrado.`)
+        const lotacao = await this.prismaService.lotacao.findUnique({ where: { id: lotacaoId }, select: { id: true } })
+        if (!lotacao) throw new Error(`Lotação ${lotacaoId} não encontrada.`)
+        const dataValida = (dataEscala instanceof Date) ? dataEscala : new Date(dataEscala as any)
+        if (!(dataValida instanceof Date) || isNaN(dataValida.getTime())) {
+            throw new Error('dataEscala inválida. Use uma data ISO válida (YYYY-MM-DD).')
+        }
+        try {
+            return await this.prismaService.escala.create({
+                data: {
+                    nome,
+                    lotacaoId,
+                    recessoId,
+                    dataEscala: dataValida,
+                    recebePagamento: receberPagamento ?? false,
+                    escalado: escalado ?? false,
+                }
+            })
+        } catch (error: any) {
+            if (error.code === 'P2002') {
+                throw new Error(`Escala com nome "${nome}" já existe para o recesso informado.`)
+            }
+            throw new Error(`Erro ao criar escala. ${error.message}`)
+        }
+    }
+
+    async updateEscala(id: string, data: TUpdateEscalaDto) {
+        const { nome, lotacaoId, recessoId, dataEscala, receberPagamento, escalado } = data
+        const recesso = await this.prismaService.recesso.findUnique({ where: { id: recessoId }, select: { id: true } })
+        if (!recesso) throw new Error(`Recesso ${recessoId} não encontrado.`)
+        const lotacao = await this.prismaService.lotacao.findUnique({ where: { id: lotacaoId }, select: { id: true } })
+        if (!lotacao) throw new Error(`Lotação ${lotacaoId} não encontrada.`)
+        const dataValida = (dataEscala instanceof Date) ? dataEscala : new Date(dataEscala as any)
+        if (!(dataValida instanceof Date) || isNaN(dataValida.getTime())) {
+            throw new Error('dataEscala inválida. Use uma data ISO válida (YYYY-MM-DD).')
+        }
+        try {
+            return await this.prismaService.escala.update({ 
+                where: { id },
+                data: {
+                    nome,
+                    lotacaoId,
+                    recessoId,
+                    dataEscala: dataValida,
+                    recebePagamento: receberPagamento ?? false,
+                    escalado: escalado ?? false,
+                }
+            })
+        } catch (error: any) {
+            if (error.code === 'P2002') {
+                throw new Error(`Escala com nome "${nome}" já existe para o recesso informado.`)
+            }
+            throw new Error(`Erro ao atualizar escala. ${error.message}`)
+        }
+    }
+
+    async deleteEscala(id: string) {
+        try {
+            return await this.prismaService.escala.delete({
+                where: { id },
+            })
+        } catch (error) {
+            throw new Error(`Erro ao deletar escala. ${error}`)
+        }
     }
 
 }

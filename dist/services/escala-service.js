@@ -14,8 +14,7 @@ class EscalaService {
      */
     async getAllEscalas() {
         try {
-            const escala = await this.prismaService.escala.findMany();
-            return escala;
+            return await this.prismaService.escala.findMany();
         }
         catch (error) {
             throw new Error(`Erro ao buscar todas as escalas. ${error}`);
@@ -44,10 +43,36 @@ class EscalaService {
      * @param data - Os dados da escala a ser criada.
      * @returns Uma promessa que resolve para a escala criada.
      */
-    async create(data) {
-        return await this.prismaService.escala.create({
-            data,
-        });
+    async createEscalaServidor(data) {
+        const { nome, lotacaoId, recessoId, dataEscala, receberPagamento, escalado } = data;
+        const recesso = await this.prismaService.recesso.findUnique({ where: { id: recessoId }, select: { id: true } });
+        if (!recesso)
+            throw new Error(`Recesso ${recessoId} não encontrado.`);
+        const lotacao = await this.prismaService.lotacao.findUnique({ where: { id: lotacaoId }, select: { id: true } });
+        if (!lotacao)
+            throw new Error(`Lotação ${lotacaoId} não encontrada.`);
+        const dataValida = (dataEscala instanceof Date) ? dataEscala : new Date(dataEscala);
+        if (!(dataValida instanceof Date) || isNaN(dataValida.getTime())) {
+            throw new Error('dataEscala inválida. Use uma data ISO válida (YYYY-MM-DD).');
+        }
+        try {
+            return await this.prismaService.escala.create({
+                data: {
+                    nome,
+                    lotacaoId,
+                    recessoId,
+                    dataEscala: dataValida,
+                    recebePagamento: receberPagamento ?? false,
+                    escalado: escalado ?? false,
+                }
+            });
+        }
+        catch (error) {
+            if (error.code === 'P2002') {
+                throw new Error(`Escala com nome "${nome}" já existe para o recesso informado.`);
+            }
+            throw new Error(`Erro ao criar escala. ${error.message}`);
+        }
     }
 }
 exports.EscalaService = EscalaService;

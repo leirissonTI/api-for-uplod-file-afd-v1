@@ -210,6 +210,7 @@ model Escala {
   id           String   @id @default(uuid())
   nome         String
   lotacaoId    String
+  dataEscala   DateTime @map("data_escala")
   recebePagamento Boolean @default(false)
   escalado     Boolean @default(false)
   createdAt    DateTime @default(now())

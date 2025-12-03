@@ -13,3 +13,6 @@ exports.servidorRoutes.get('/all', ((req, res) => { servidorController.getAllSer
 exports.servidorRoutes.post('/create', ((req, res) => { servidorController.createServidor(req, res); }));
 exports.servidorRoutes.post('/create/bulk', multerConfig_1.upload.single('file'), ((req, res) => { servidorController.importarServidoresEmLote(req, res); }));
 exports.servidorRoutes.post('/create', ((req, res) => { servidorController.createServidor(req, res); }));
+exports.servidorRoutes.get('/:id', ((req, res) => { servidorController.getServidorById(req, res); }));
+exports.servidorRoutes.put('/:id', ((req, res) => { servidorController.updateServidor(req, res); }));
+exports.servidorRoutes.delete('/:id', ((req, res) => { servidorController.deleteServidor(req, res); }));
