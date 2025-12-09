@@ -9,5 +9,15 @@ const escalaController = new escala_controller_1.EscalaController(new escala_ser
 exports.escalaRoutes = router;
 const getAllHandler = (req, res) => { escalaController.getAllEscalas(req, res); };
 const createHandler = (req, res) => { escalaController.createEscala(req, res); };
+const createByNamesHandler = (req, res) => { escalaController.createEscalaPorNomes(req, res); };
+const resumoHandler = (req, res) => { escalaController.getResumo(req, res); };
+const updateHandler = (req, res) => { escalaController.updateEscala(req, res); };
+const deleteHandler = (req, res) => { escalaController.deleteEscala(req, res); };
+const byDescricaoHandler = (req, res) => { escalaController.getEscalasPorRecessoDescricao(req, res); };
 exports.escalaRoutes.get("/all", getAllHandler);
 exports.escalaRoutes.post("/create", createHandler);
+exports.escalaRoutes.post("/create/by-names", createByNamesHandler);
+exports.escalaRoutes.get("/resumo/:recessoId/:matricula", resumoHandler);
+exports.escalaRoutes.get("/recesso/descricao/:descricao", byDescricaoHandler);
+exports.escalaRoutes.put("/update/:id", updateHandler);
+exports.escalaRoutes.delete("/delete/:id", deleteHandler);

@@ -1,4 +1,4 @@
-import { IResgistros } from "../interfaces/IResgistros"
+import { IResgistros } from "../entitys/interfaces/IResgistros"
 
 export type TRegistroAFD = {
   tipo: string   // ex: '1', '2', '3', '5'

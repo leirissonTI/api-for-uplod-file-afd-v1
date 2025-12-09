@@ -10,6 +10,7 @@ const servidorController = new ServidorController(servidorService)
 export const servidorRoutes = Router()
 
 servidorRoutes.get('/all', ((req: Request, res: Response) => { servidorController.getAllServidores(req, res) }) as RequestHandler)
+servidorRoutes.get('/search', ((req: Request, res: Response) => { servidorController.buscarPorNome(req, res) }) as RequestHandler)
 servidorRoutes.post('/create', ((req: Request, res: Response) => { servidorController.createServidor(req, res) }) as RequestHandler)
 servidorRoutes.post('/create/bulk', upload.single('file'), ((req: Request, res: Response) => { servidorController.importarServidoresEmLote(req, res) }) as RequestHandler)
 servidorRoutes.post('/create', ((req: Request, res: Response) => { servidorController.createServidor(req, res) }) as RequestHandler)

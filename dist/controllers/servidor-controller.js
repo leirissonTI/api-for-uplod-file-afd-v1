@@ -31,6 +31,19 @@ class ServidorController {
             });
         }
     }
+    async buscarPorNome(req, res) {
+        try {
+            const nome = String(req.query.nome || '').trim();
+            if (!nome) {
+                return res.status(400).json({ success: false, error: 'Parâmetros inválidos.', message: 'Informe ?nome=' });
+            }
+            const servidores = await this.servidorService.buscarPorNome(nome);
+            return res.status(200).json({ success: true, message: 'Servidores filtrados por nome.', data: servidores });
+        }
+        catch (error) {
+            return res.status(500).json({ success: false, error: 'Erro ao buscar servidores por nome.', message: `${error.message}` });
+        }
+    }
     /**
      * Cria um novo servidor.
      * @param req - O objeto de solicitação HTTP.

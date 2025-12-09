@@ -29,6 +29,25 @@ class ServidorService {
             throw new Error(`Erro ao buscar todos os servidores. ${error.message}`);
         }
     }
+    async buscarPorNome(nome) {
+        try {
+            return await this.prismaService.funcionario.findMany({
+                where: { nome: { contains: nome, mode: 'insensitive' } },
+                select: {
+                    id: true,
+                    nome: true,
+                    email: true,
+                    matricula: true,
+                    role: true,
+                    createdAt: true,
+                    updatedAt: true,
+                }
+            });
+        }
+        catch (error) {
+            throw new Error(`Erro ao buscar servidores por nome. ${error.message}`);
+        }
+    }
     /**
      * Cria um novo servidor.
      * @param servidor - Os dados do servidor a ser criado.

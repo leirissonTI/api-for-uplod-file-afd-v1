@@ -8,4 +8,6 @@ export type EscalaEntity = {
     createdAt?: Date
     updatedAt?: Date | null
     recessoId: String
+    label?: string[]
+    labelAnimated?: string
 }

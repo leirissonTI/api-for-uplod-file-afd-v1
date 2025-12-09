@@ -1,5 +1,5 @@
 import { Response } from 'express'
-import { ApiResponse } from '../interfaces/response-interface'
+import { ApiResponse } from '../entitys/interfaces/response-interface'
 
 export const sendResponse = <T>(response: Response, payload: ApiResponse<T>): Response => {
   return response.status(payload.statusCode).json({

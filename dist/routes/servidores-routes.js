@@ -10,6 +10,7 @@ const servidorService = new servidor_service_1.ServidorService(prisma_1.prisma);
 const servidorController = new servidor_controller_1.ServidorController(servidorService);
 exports.servidorRoutes = (0, express_1.Router)();
 exports.servidorRoutes.get('/all', ((req, res) => { servidorController.getAllServidores(req, res); }));
+exports.servidorRoutes.get('/search', ((req, res) => { servidorController.buscarPorNome(req, res); }));
 exports.servidorRoutes.post('/create', ((req, res) => { servidorController.createServidor(req, res); }));
 exports.servidorRoutes.post('/create/bulk', multerConfig_1.upload.single('file'), ((req, res) => { servidorController.importarServidoresEmLote(req, res); }));
 exports.servidorRoutes.post('/create', ((req, res) => { servidorController.createServidor(req, res); }));

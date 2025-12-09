@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../generated/prisma";
 import { prisma } from "../config/prisma";
 import { CreateLotacaoDto } from "../dtos/lotacao/create-lotacao.dto";
 import { PatchLotacaoDto } from "../dtos/lotacao/patch-lotacao.dto";
@@ -19,6 +19,16 @@ export class LotacaoService {
             return  await this.prismaService.lotacao.findMany()
         } catch (error) {
             throw new Error(`Erro ao buscar todas as lotações. ${error}`)
+        }
+    }
+
+    async buscarPorNome(nome: string) {
+        try {
+            return await this.prismaService.lotacao.findMany({
+                where: { nome: { contains: nome, mode: 'insensitive' as any } }
+            })
+        } catch (error: any) {
+            throw new Error(`Erro ao buscar lotação por nome. ${error.message || error}`)
         }
     }
 

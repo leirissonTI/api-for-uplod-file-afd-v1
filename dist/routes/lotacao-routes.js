@@ -8,6 +8,7 @@ const prisma_1 = require("../config/prisma");
 const lotacaoController = new lotacao_controller_1.LotacaoController(new lotacao_service_1.LotacaoService(prisma_1.prisma));
 exports.lotacaoRoutes = (0, express_1.Router)();
 exports.lotacaoRoutes.get("/all", ((req, res) => { lotacaoController.getAllLotacao(req, res); }));
+exports.lotacaoRoutes.get("/search", ((req, res) => { lotacaoController.buscarPorNome(req, res); }));
 exports.lotacaoRoutes.post("/create", ((req, res) => { lotacaoController.createLotacao(req, res); }));
 exports.lotacaoRoutes.patch("/update/:id", ((req, res) => { lotacaoController.updateLotacao(req, res); }));
 exports.lotacaoRoutes.delete("/delete/:id", ((req, res) => { lotacaoController.deleteLotacao(req, res); }));

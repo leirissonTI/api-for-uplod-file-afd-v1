@@ -20,6 +20,16 @@ class LotacaoService {
             throw new Error(`Erro ao buscar todas as lotações. ${error}`);
         }
     }
+    async buscarPorNome(nome) {
+        try {
+            return await this.prismaService.lotacao.findMany({
+                where: { nome: { contains: nome, mode: 'insensitive' } }
+            });
+        }
+        catch (error) {
+            throw new Error(`Erro ao buscar lotação por nome. ${error.message || error}`);
+        }
+    }
     /**
      * Retorna uma lotação pelo ID.
      * @param id O ID da lotação a ser buscada.

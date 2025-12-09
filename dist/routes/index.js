@@ -8,6 +8,7 @@ const recesso_routes_1 = require("./recesso-routes");
 const escala_routes_1 = require("./escala-routes");
 const servidores_routes_1 = require("./servidores-routes");
 const lotacao_routes_1 = require("./lotacao-routes");
+const solicitacoes_routes_1 = require("./solicitacoes-routes");
 exports.routes = (0, express_1.Router)();
 // rotas da aplicação
 exports.routes.use('/afd-registros', arquivo_afd_routes_1.arquivoAfdRoutes);
@@ -16,3 +17,4 @@ exports.routes.use('/recesso', recesso_routes_1.recessoRoutes);
 exports.routes.use('/lotacao', lotacao_routes_1.lotacaoRoutes);
 exports.routes.use('/escala', escala_routes_1.escalaRoutes);
 exports.routes.use('/servidor', servidores_routes_1.servidorRoutes);
+exports.routes.use('/solicitacoes', solicitacoes_routes_1.solicitacoesRouter);

@@ -10,7 +10,7 @@ export class ServidorService {
      * Busca todos os servidores.
      * @returns Uma promessa que resolve para um array de servidores.
      */
-     async getAllServidores(){
+    async getAllServidores(){
         try {
             return await this.prismaService.funcionario.findMany({
                 select: {
@@ -25,6 +25,25 @@ export class ServidorService {
             })
         } catch (error: any) {
             throw new Error(`Erro ao buscar todos os servidores. ${error.message}`)
+        }
+    }
+
+    async buscarPorNome(nome: string){
+        try {
+            return await this.prismaService.funcionario.findMany({
+                where: { nome: { contains: nome, mode: 'insensitive' as any } },
+                select: {
+                    id: true,
+                    nome: true,
+                    email: true,
+                    matricula: true,
+                    role: true,
+                    createdAt: true,
+                    updatedAt: true,
+                }
+            })
+        } catch (error: any) {
+            throw new Error(`Erro ao buscar servidores por nome. ${error.message}`)
         }
     }
 

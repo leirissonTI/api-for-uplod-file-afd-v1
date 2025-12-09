@@ -28,6 +28,19 @@ export class LotacaoController {
             })
         }
     }
+
+    async buscarPorNome(req: Request, res: Response) {
+        try {
+            const nome = String(req.query.nome || '').trim()
+            if (!nome) {
+                return res.status(400).json({ success: false, error: 'Parâmetros inválidos.', message: 'Informe ?nome=' })
+            }
+            const lotacoes = await this.lotacaoService.buscarPorNome(nome)
+            return res.status(200).json({ success: true, message: 'Lotações filtradas por nome.', data: lotacoes })
+        } catch (error: any) {
+            return res.status(500).json({ success: false, error: 'Erro ao buscar lotação por nome.', message: `${error.message || error}` })
+        }
+    }
     /**
      * Retorna uma lotação pelo ID.
      * @param id O ID da lotação a ser buscada.

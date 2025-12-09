@@ -1,7 +1,7 @@
 import { Request, Response } from 'express'
 import { AfdService } from '../services/afd-services'
 import { sendResponse } from "../utils/send-response"
-import { IResgistros } from "../interfaces/IResgistros"
+import { IResgistros } from "../entitys/interfaces/IResgistros"
 
 
 
