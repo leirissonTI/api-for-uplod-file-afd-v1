@@ -37,3 +37,24 @@ export function parseManyDates(values: any[]): { valid: Date[]; invalid: any[] }
     }
     return { valid, invalid }
 }
+
+export function toStartOfYear(input: any): Date | null {
+    const d = parseDateInput(input)
+    if (d) {
+        const year = d.getFullYear()
+        return new Date(year, 0, 1)
+    }
+    if (typeof input === 'number') {
+        return new Date(input, 0, 1)
+    }
+    if (typeof input === 'string') {
+        const s = input.trim()
+        const yearMatch = s.match(/^(\d{4})$/)
+        if (yearMatch) {
+            return new Date(Number(yearMatch[1]), 0, 1)
+        }
+        const d2 = parseDateInput(s)
+        if (d2) return new Date(d2.getFullYear(), 0, 1)
+    }
+    return null
+}

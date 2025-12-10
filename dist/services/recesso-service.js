@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RecessoService = void 0;
 const prisma_1 = require("../config/prisma");
+const date_utils_1 = require("../utils/date-utils");
 class RecessoService {
     prismaService;
     constructor(prismaService = prisma_1.prisma) {
@@ -40,14 +41,21 @@ class RecessoService {
     async createRecesso(recesso) {
         const { descricao, processoSei, abertoParaFrequencia, data_inicio, data_fim, } = recesso;
         try {
+            const anoStart = (0, date_utils_1.toStartOfYear)(recesso.ano);
+            if (!anoStart)
+                throw new Error('ano inválido. Envie um ano (YYYY) ou uma data válida.');
+            const di = (0, date_utils_1.parseDateInput)(data_inicio);
+            const df = (0, date_utils_1.parseDateInput)(data_fim);
+            if (!di || !df)
+                throw new Error('data_inicio ou data_fim inválidos.');
             await this.prismaService.recesso.create({
                 data: {
-                    ano: new Date(`${recesso.ano}-01-01T00:00:00.000Z`),
+                    ano: anoStart,
                     descricao,
                     processoSei,
                     abertoParaFrequencia,
-                    DataInicial: data_inicio,
-                    dataFinal: data_fim,
+                    DataInicial: di,
+                    dataFinal: df,
                 }
             });
         }
@@ -80,7 +88,13 @@ class RecessoService {
         // verifica se o recesso existe
         const oRecessoExiste = await this.verificaSeRecessoExiste(id);
         const { ano, descricao, processoSei, abertoParaFrequencia, data_inicio, data_fim, } = recesso;
-        const dataFormatada = new Date(`${ano}-01-01T00:00:00.000Z`).toISOString();
+        const anoStart = (0, date_utils_1.toStartOfYear)(ano);
+        if (!anoStart)
+            throw new Error('ano inválido ao atualizar recesso.');
+        const di = (0, date_utils_1.parseDateInput)(data_inicio);
+        const df = (0, date_utils_1.parseDateInput)(data_fim);
+        if (!di || !df)
+            throw new Error('data_inicio ou data_fim inválidos ao atualizar recesso.');
         if (!oRecessoExiste) {
             throw new Error(`Recesso com ID ${id} não foi encontrado.`);
         }
@@ -90,12 +104,12 @@ class RecessoService {
                     id: oRecessoExiste.id,
                 },
                 data: {
-                    ano: dataFormatada,
+                    ano: anoStart,
                     descricao,
                     processoSei,
                     abertoParaFrequencia,
-                    DataInicial: data_inicio,
-                    dataFinal: data_fim,
+                    DataInicial: di,
+                    dataFinal: df,
                 }
             });
         }

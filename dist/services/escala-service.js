@@ -14,31 +14,68 @@ class EscalaService {
      */
     async getAllEscalas() {
         try {
-            const rows = await this.prismaService.escala.findMany({
+            const registros = await this.prismaService.solicitacao.findMany({
                 select: {
-                    id: true,
-                    nome: true,
-                    lotacaoId: true,
-                    dataEscala: true,
-                    recebePagamento: true,
-                    escalado: true,
-                    createdAt: true,
-                    updatedAt: true,
-                    recessoId: true,
+                    criador: { select: { matricula: true, nome: true } },
+                    escala: { select: { dataEscala: true, recebePagamento: true, recesso: { select: { descricao: true } } } },
                 },
-                orderBy: [{ dataEscala: 'asc' }, { nome: 'asc' }],
+                orderBy: [{ createdAt: 'asc' }],
             });
-            return rows.map(r => ({
-                id: r.id,
-                nome: r.nome,
-                lotacaoId: r.lotacaoId,
-                dataEscala: r.dataEscala,
-                recebePagamento: r.recebePagamento,
-                escalado: r.escalado,
-                createdAt: r.createdAt,
-                updatedAt: r.updatedAt ?? null,
-                recessoId: r.recessoId,
-            }));
+            const format = (d) => {
+                const dd = String(d.getDate()).padStart(2, '0');
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                return `${dd}/${mm}`;
+            };
+            const agruparPorMes = (datas) => {
+                const grupos = {};
+                for (const d of datas) {
+                    const chave = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                    if (!grupos[chave])
+                        grupos[chave] = [];
+                    grupos[chave].push(d);
+                }
+                return Object.values(grupos).map(arr => {
+                    arr.sort((a, b) => a.getTime() - b.getTime());
+                    const ini = arr[0];
+                    const fim = arr[arr.length - 1];
+                    return `${format(ini)} a ${format(fim)}`;
+                });
+            };
+            const byKey = {};
+            for (const r of registros) {
+                if (!r.criador || !r.escala)
+                    continue;
+                const matricula = r.criador.matricula;
+                const nome = r.criador.nome;
+                const recesso = r.escala.recesso?.descricao || '';
+                const key = `${matricula}|${recesso}`;
+                if (!byKey[key])
+                    byKey[key] = { matricula, nome, recesso, todas: [], folga: [], pagamento: [] };
+                const dt = r.escala.dataEscala;
+                if (!dt)
+                    continue;
+                byKey[key].todas.push(dt);
+                if (r.escala.recebePagamento)
+                    byKey[key].pagamento.push(dt);
+                else
+                    byKey[key].folga.push(dt);
+            }
+            const result = [];
+            for (const k of Object.keys(byKey)) {
+                const g = byKey[k];
+                g.todas.sort((a, b) => a.getTime() - b.getTime());
+                g.pagamento.sort((a, b) => a.getTime() - b.getTime());
+                g.folga.sort((a, b) => a.getTime() - b.getTime());
+                result.push({
+                    matricula: g.matricula,
+                    nome: g.nome,
+                    recesso: g.recesso,
+                    periodoEscalado: agruparPorMes(g.todas),
+                    preferenciaFolga: agruparPorMes(g.folga),
+                    preferenciaPagamento: agruparPorMes(g.pagamento),
+                });
+            }
+            return result;
         }
         catch (error) {
             throw new Error(`Erro ao buscar todas as escalas. ${error.message || error}`);
@@ -179,26 +216,39 @@ class EscalaService {
      */
     async createEscalaServidor(data) {
         const { nome, lotacaoId, recessoId, dataEscala, diasEscala, receberPagamento, escalado, servidorId, servidorMatricula, chefeId, chefeMatricula, motivo } = data;
+        console.log({ nome, lotacaoId, recessoId, dataEscala, diasEscala, receberPagamento, escalado, servidorId, servidorMatricula, chefeId, chefeMatricula, motivo });
         const recesso = await this.prismaService.recesso.findUnique({ where: { id: recessoId }, select: { id: true, DataInicial: true, dataFinal: true } });
         if (!recesso)
             throw new Error(`Recesso ${recessoId} não encontrado.`);
         const lotacao = await this.prismaService.lotacao.findUnique({ where: { id: lotacaoId }, select: { id: true } });
         if (!lotacao)
             throw new Error(`Lotação ${lotacaoId} não encontrada.`);
-        const datas = [];
+        const datasOpcao = [];
         if (diasEscala && diasEscala.length > 0) {
             for (const d of diasEscala) {
-                const v = d instanceof Date ? d : new Date(d);
-                if (!(v instanceof Date) || isNaN(v.getTime()))
+                let v = null;
+                let opcao;
+                if (d instanceof Date) {
+                    v = d;
+                }
+                else if (typeof d === 'object' && d && 'data' in d) {
+                    const raw = d.data;
+                    opcao = d.opcao;
+                    v = raw instanceof Date ? raw : new Date(raw);
+                }
+                else if (typeof d === 'string' || typeof d === 'number') {
+                    v = new Date(d);
+                }
+                if (!v || isNaN(v.getTime()))
                     throw new Error('diasEscala contém data inválida');
-                datas.push(v);
+                datasOpcao.push({ dt: v, opcao });
             }
         }
         else if (dataEscala) {
             const v = dataEscala instanceof Date ? dataEscala : new Date(dataEscala);
             if (!(v instanceof Date) || isNaN(v.getTime()))
                 throw new Error('dataEscala inválida. Use uma data ISO válida (YYYY-MM-DD).');
-            datas.push(v);
+            datasOpcao.push({ dt: v });
         }
         else {
             throw new Error('Informe dataEscala ou diasEscala');
@@ -218,7 +268,17 @@ class EscalaService {
             aprovadorIdFinal = ch.id;
         }
         const resultados = [];
-        for (const dt of datas) {
+        const normalizeToIso = (x) => {
+            const d = x instanceof Date ? x : new Date(x);
+            if (isNaN(d.getTime()))
+                return null;
+            return d.toISOString().slice(0, 10);
+        };
+        const setFolga = new Set((data.escalaFolgar || []).map(x => normalizeToIso(x)).filter(Boolean));
+        const setPagamento = new Set((data.escalaReceberPagamento || []).map(x => normalizeToIso(x)).filter(Boolean));
+        for (const item of datasOpcao) {
+            const dt = item.dt;
+            const opcao = item.opcao;
             if (dt < recesso.DataInicial || dt > recesso.dataFinal) {
                 resultados.push({ erro: `Data fora do período do recesso: ${dt.toISOString().slice(0, 10)}` });
                 continue;
@@ -231,8 +291,24 @@ class EscalaService {
                         lotacaoId,
                         recessoId,
                         dataEscala: dt,
-                        recebePagamento: !!receberPagamento,
+                        recebePagamento: (() => {
+                            const iso = dt.toISOString().slice(0, 10);
+                            if (setPagamento.has(iso))
+                                return true;
+                            if (setFolga.has(iso))
+                                return false;
+                            if (opcao === 'pagamento')
+                                return true;
+                            if (opcao === 'folga')
+                                return false;
+                            return !!receberPagamento;
+                        })(),
                         escalado: !!escalado,
+                        servidorId: criadorIdFinal || null,
+                        chefeId: aprovadorIdFinal || null,
+                        servidorMatricula: servidorMatricula || undefined,
+                        chefeMatricula: chefeMatricula || undefined,
+                        motivo: motivo || undefined,
                     }
                 });
                 if (criadorIdFinal) {

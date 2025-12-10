@@ -4,6 +4,7 @@ import { TRecesso } from "../types/TRecesso";
 import { CreateRecessoDto } from "../dtos/create-recesso.dto";
 import { TIdRecessoDto } from "../dtos/id-recesso.dto";
 import { TUpdateRecessoDto } from "../dtos/update-recesso.dto";
+import { parseDateInput, toStartOfYear } from "../utils/date-utils";
 
 
 
@@ -54,14 +55,19 @@ export class RecessoService {
         } = recesso
 
         try {
+            const anoStart = toStartOfYear((recesso as any).ano)
+            if (!anoStart) throw new Error('ano inválido. Envie um ano (YYYY) ou uma data válida.')
+            const di = parseDateInput(data_inicio)
+            const df = parseDateInput(data_fim)
+            if (!di || !df) throw new Error('data_inicio ou data_fim inválidos.')
             await this.prismaService.recesso.create({
                 data: {
-                    ano: new Date(`${recesso.ano}-01-01T00:00:00.000Z`),
+                    ano: anoStart,
                     descricao,
                     processoSei,
                     abertoParaFrequencia,
-                    DataInicial: data_inicio,
-                    dataFinal: data_fim,
+                    DataInicial: di,
+                    dataFinal: df,
                 }
             })
         } catch (error: any) {
@@ -104,7 +110,11 @@ export class RecessoService {
             data_inicio,
             data_fim,
         } = recesso
-        const dataFormatada = new Date(`${ano}-01-01T00:00:00.000Z`).toISOString()
+        const anoStart = toStartOfYear(ano)
+        if (!anoStart) throw new Error('ano inválido ao atualizar recesso.')
+        const di = parseDateInput(data_inicio)
+        const df = parseDateInput(data_fim)
+        if (!di || !df) throw new Error('data_inicio ou data_fim inválidos ao atualizar recesso.')
         if (!oRecessoExiste) {
             throw new Error(`Recesso com ID ${id} não foi encontrado.`)
         }
@@ -116,12 +126,12 @@ export class RecessoService {
                     id: oRecessoExiste.id,
                 },
                 data: {
-                    ano: dataFormatada,
+                    ano: anoStart,
                     descricao,
                     processoSei,
                     abertoParaFrequencia,
-                    DataInicial: data_inicio,
-                    dataFinal: data_fim,
+                    DataInicial: di,
+                    dataFinal: df,
                 }
             })
         } catch (error: any) {

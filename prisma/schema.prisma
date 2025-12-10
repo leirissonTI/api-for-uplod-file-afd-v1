@@ -216,13 +216,22 @@ model Escala {
   createdAt    DateTime @default(now())
   updatedAt    DateTime?
   recessoId    String
+  servidorId   String?
+  servidorMatricula String?
+  chefeId      String?
+  chefeMatricula String?
+  motivo       String?
 
   recesso      Recesso @relation(fields: [recessoId], references: [id], onDelete: Cascade)
   lotacao      Lotacao @relation(fields: [lotacaoId], references: [id], onDelete: Restrict)
+  servidor     Funcionario? @relation("EscalaServidor", fields: [servidorId], references: [id])
+  chefe        Funcionario? @relation("EscalaChefe", fields: [chefeId], references: [id])
   solicitacoes Solicitacao[]
 
   @@index([recessoId])
   @@index([lotacaoId])
+  @@index([servidorId])
+  @@index([chefeId])
   @@unique([nome, recessoId]) // evita duplicação de nomes de escala no mesmo recesso
 }
 
@@ -241,6 +250,8 @@ model Funcionario {
 
   solicitacoesCriadas Solicitacao[] @relation("Criador")
   solicitacoesAprovadas Solicitacao[] @relation("Aprovador")
+  escalasComoServidor Escala[] @relation("EscalaServidor")
+  escalasComoChefe Escala[] @relation("EscalaChefe")
 
   @@index([role])
 }

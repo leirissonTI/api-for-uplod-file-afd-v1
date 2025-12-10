@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EscalaController = void 0;
 const date_utils_1 = require("../utils/date-utils");
+const create_escala_dto_1 = require("../dtos/escala/create-escala.dto");
 class EscalaController {
     escalaService;
     constructor(escalaService) {
@@ -27,32 +28,45 @@ class EscalaController {
     }
     async createEscala(request, response) {
         try {
-            const { nome, lotacaoId, recessoId, dataEscala, diasEscala, receberPagamento, escalado, servidorId, servidorMatricula, chefeId, chefeMatricula, motivo } = request.body;
-            const dataEscalaParsed = dataEscala !== undefined ? (0, date_utils_1.parseDateInput)(dataEscala) : undefined;
-            const diasArray = Array.isArray(diasEscala) ? diasEscala : undefined;
-            const parsedMany = diasArray ? (0, date_utils_1.parseManyDates)(diasArray) : { valid: [], invalid: [] };
-            if (diasArray && parsedMany.invalid.length > 0) {
-                return response.status(400).json({ success: false, error: 'diasEscala inválido', message: 'Forneça datas válidas (YYYY-MM-DD ou DD/MM/YYYY)', data: { invalid: parsedMany.invalid } });
+            const parsed = create_escala_dto_1.createEscalaDtoSchema.safeParse(request.body);
+            if (!parsed.success) {
+                return response.status(400).json({ success: false, error: 'Erro de validação', message: parsed.error.issues.map(i => i.message).join(', ') });
             }
-            if (!diasArray && dataEscala !== undefined && !dataEscalaParsed) {
-                return response.status(400).json({ success: false, error: 'dataEscala inválida', message: 'Use uma data válida (YYYY-MM-DD ou DD/MM/YYYY)' });
+            const { nome, lotacaoId, recessoId, dataEscala, diasEscala, receberPagamento, escalado, servidorId, servidorMatricula, chefeId, chefeMatricula, motivo, escalaFolgar, escalaReceberPagamento } = parsed.data;
+            if (!recessoId || String(recessoId).trim() === '') {
+                return response.status(400).json({ success: false, error: 'Parâmetros inválidos', message: 'recessoId é obrigatório' });
             }
-            if (!diasArray && dataEscala === undefined) {
-                return response.status(400).json({ success: false, error: 'Parâmetros inválidos', message: 'Informe dataEscala ou diasEscala' });
+            if (!chefeId || String(chefeId).trim() === '') {
+                return response.status(400).json({ success: false, error: 'Parâmetros inválidos', message: 'chefeId é obrigatório' });
+            }
+            let invalids = [];
+            if (Array.isArray(diasEscala)) {
+                for (const d of diasEscala) {
+                    const ok = (d instanceof Date)
+                        || (typeof d === 'string' && !!(0, date_utils_1.parseDateInput)(d))
+                        || (typeof d === 'object' && d && 'data' in d && !!(0, date_utils_1.parseDateInput)(d.data));
+                    if (!ok)
+                        invalids.push(d);
+                }
+            }
+            if (invalids.length > 0) {
+                return response.status(400).json({ success: false, error: 'diasEscala inválido', message: 'Forneça datas válidas (YYYY-MM-DD ou DD/MM/YYYY)', data: { invalid: invalids } });
             }
             const escala = await this.escalaService.createEscalaServidor({
                 nome,
                 lotacaoId,
                 recessoId,
-                dataEscala: dataEscalaParsed ?? undefined,
-                diasEscala: parsedMany.valid,
+                dataEscala,
+                diasEscala,
                 servidorId,
                 servidorMatricula,
                 chefeId,
                 chefeMatricula,
                 motivo,
-                receberPagamento: !!receberPagamento,
-                escalado: !!escalado,
+                receberPagamento,
+                escalado,
+                escalaFolgar,
+                escalaReceberPagamento,
             });
             response.status(201).json({
                 success: true,
@@ -61,7 +75,7 @@ class EscalaController {
             });
         }
         catch (error) {
-            throw new Error(`Erro ao criar escala. ${error}`);
+            return response.status(500).json({ success: false, error: 'Erro ao criar escala.', message: `${error.message || error}` });
         }
     }
     async createEscalaPorNomes(request, response) {

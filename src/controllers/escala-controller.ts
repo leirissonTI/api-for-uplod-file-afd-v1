@@ -1,6 +1,8 @@
 import { EscalaEntity } from "../entitys/escala.entity";
 import { EscalaService } from "../services/escala-service";
 import { Request, Response } from 'express'
+import { parseDateInput } from "../utils/date-utils";
+import { createEscalaDtoSchema } from "../dtos/escala/create-escala.dto";
 
 
 export class EscalaController {
@@ -13,7 +15,7 @@ export class EscalaController {
      */
     async getAllEscalas(_:Request, response:Response) {
         try {
-            const escalas: EscalaEntity[] =  await this.escalaService.getAllEscalas()
+            const escalas =  await this.escalaService.getAllEscalas()
              response.status(200).json({
                 success: true,
                 message: `Todos as escalas foram resgatadas com sucesso.`,
@@ -27,7 +29,29 @@ export class EscalaController {
 
     async createEscala(request: Request, response: Response) {
         try {
-            const { nome, lotacaoId, recessoId, dataEscala, diasEscala, receberPagamento, escalado, servidorId, servidorMatricula, chefeId, chefeMatricula, motivo } = request.body
+            const parsed = createEscalaDtoSchema.safeParse(request.body)
+            if (!parsed.success) {
+                return response.status(400).json({ success: false, error: 'Erro de validação', message: parsed.error.issues.map(i => i.message).join(', ') })
+            }
+            const { nome, lotacaoId, recessoId, dataEscala, diasEscala, receberPagamento, escalado, servidorId, servidorMatricula, chefeId, chefeMatricula, motivo, escalaFolgar, escalaReceberPagamento } = parsed.data as any
+            if (!recessoId || String(recessoId).trim() === '') {
+                return response.status(400).json({ success: false, error: 'Parâmetros inválidos', message: 'recessoId é obrigatório' })
+            }
+            if (!chefeId || String(chefeId).trim() === '') {
+                return response.status(400).json({ success: false, error: 'Parâmetros inválidos', message: 'chefeId é obrigatório' })
+            }
+            let invalids: any[] = []
+            if (Array.isArray(diasEscala)) {
+                for (const d of diasEscala) {
+                    const ok = (d instanceof Date)
+                        || (typeof d === 'string' && !!parseDateInput(d))
+                        || (typeof d === 'object' && d && 'data' in d && !!parseDateInput((d as any).data))
+                    if (!ok) invalids.push(d)
+                }
+            }
+            if (invalids.length > 0) {
+                return response.status(400).json({ success: false, error: 'diasEscala inválido', message: 'Forneça datas válidas (YYYY-MM-DD ou DD/MM/YYYY)', data: { invalid: invalids } })
+            }
             const escala = await this.escalaService.createEscalaServidor({
                 nome,
                 lotacaoId,
@@ -41,14 +65,16 @@ export class EscalaController {
                 motivo,
                 receberPagamento,
                 escalado,
+                escalaFolgar,
+                escalaReceberPagamento,
             })
             response.status(201).json({
                 success: true,
                 message: `Escala(s) criada(s) com sucesso.`,
                 data: escala
             })
-        } catch (error) {
-            throw new Error(`Erro ao criar escala. ${error}`)
+        } catch (error: any) {
+            return response.status(500).json({ success: false, error: 'Erro ao criar escala.', message: `${error.message || error}` })
         }
     }
 
