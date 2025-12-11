@@ -14,13 +14,30 @@ class EscalaService {
      */
     async getAllEscalas() {
         try {
-            const registros = await this.prismaService.solicitacao.findMany({
+            const escalas = await this.prismaService.escala.findMany({
                 select: {
-                    criador: { select: { matricula: true, nome: true } },
-                    escala: { select: { dataEscala: true, recebePagamento: true, recesso: { select: { descricao: true } } } },
-                },
-                orderBy: [{ createdAt: 'asc' }],
+                    id: true,
+                    nome: true,
+                    escalado: true,
+                    servidorMatricula: true,
+                    dataEscala: true,
+                    recebePagamento: true,
+                    lotacao: { select: { nome: true } },
+                    recesso: { select: { descricao: true } },
+                }
             });
+            const missingIds = escalas.filter(e => !e.servidorMatricula).map(e => e.id);
+            const mapCriadorByEscala = new Map();
+            if (missingIds.length > 0) {
+                const solics = await this.prismaService.solicitacao.findMany({
+                    where: { escalaId: { in: missingIds } },
+                    select: { escalaId: true, criador: { select: { matricula: true, nome: true } } }
+                });
+                for (const s of solics) {
+                    if (s.criador)
+                        mapCriadorByEscala.set(s.escalaId, { matricula: s.criador.matricula, nome: s.criador.nome });
+                }
+            }
             const format = (d) => {
                 const dd = String(d.getDate()).padStart(2, '0');
                 const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -42,20 +59,29 @@ class EscalaService {
                 });
             };
             const byKey = {};
-            for (const r of registros) {
-                if (!r.criador || !r.escala)
+            for (const e of escalas) {
+                const recesso = e.recesso?.descricao || '';
+                let matricula = e.servidorMatricula || '';
+                let nome = e.nome || '';
+                if (!matricula || !nome) {
+                    const fromSolic = mapCriadorByEscala.get(e.id);
+                    if (fromSolic) {
+                        matricula = fromSolic.matricula;
+                        nome = fromSolic.nome;
+                    }
+                }
+                if (!nome)
                     continue;
-                const matricula = r.criador.matricula;
-                const nome = r.criador.nome;
-                const recesso = r.escala.recesso?.descricao || '';
+                if (!matricula)
+                    matricula = 'N/D';
                 const key = `${matricula}|${recesso}`;
                 if (!byKey[key])
                     byKey[key] = { matricula, nome, recesso, todas: [], folga: [], pagamento: [] };
-                const dt = r.escala.dataEscala;
+                const dt = e.dataEscala;
                 if (!dt)
                     continue;
                 byKey[key].todas.push(dt);
-                if (r.escala.recebePagamento)
+                if (e.recebePagamento)
                     byKey[key].pagamento.push(dt);
                 else
                     byKey[key].folga.push(dt);
@@ -284,6 +310,14 @@ class EscalaService {
                 continue;
             }
             const nomeFinal = `${nome} - ${dt.toISOString().slice(0, 10)}`;
+            const jaExiste = await this.prismaService.escala.findFirst({
+                where: { nome: nomeFinal, recessoId },
+                select: { id: true }
+            });
+            if (jaExiste) {
+                resultados.push({ skip: true });
+                continue;
+            }
             try {
                 const escala = await this.prismaService.escala.create({
                     data: {

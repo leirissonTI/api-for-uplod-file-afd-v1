@@ -17,13 +17,31 @@ export class EscalaService {
      */
     async getAllEscalas(): Promise<Array<{ matricula: string; nome: string; recesso: string; periodoEscalado: string[]; preferenciaFolga: string[]; preferenciaPagamento: string[] }>> {
         try {
-            const registros = await this.prismaService.solicitacao.findMany({
-                select: {
-                    criador: { select: { matricula: true, nome: true } },
-                    escala: { select: { dataEscala: true, recebePagamento: true, recesso: { select: { descricao: true } } } },
-                },
-                orderBy: [{ createdAt: 'asc' }],
+
+            const escalas = await this.prismaService.escala.findMany({
+                select:{
+                    id: true,
+                    nome: true,
+                    escalado: true,                 
+                    servidorMatricula: true,
+                    dataEscala: true,
+                    recebePagamento: true,
+                    lotacao: { select: { nome: true } },
+                    recesso: { select: { descricao: true } },
+                }
             })
+
+            const missingIds = escalas.filter(e => !e.servidorMatricula).map(e => e.id)
+            const mapCriadorByEscala = new Map<string, { matricula: string; nome: string }>()
+            if (missingIds.length > 0) {
+                const solics = await this.prismaService.solicitacao.findMany({
+                    where: { escalaId: { in: missingIds } },
+                    select: { escalaId: true, criador: { select: { matricula: true, nome: true } } }
+                })
+                for (const s of solics) {
+                    if (s.criador) mapCriadorByEscala.set(s.escalaId, { matricula: s.criador.matricula, nome: s.criador.nome })
+                }
+            }
 
             const format = (d: Date) => {
                 const dd = String(d.getDate()).padStart(2, '0')
@@ -46,21 +64,33 @@ export class EscalaService {
             }
 
             const byKey: Record<string, { matricula: string; nome: string; recesso: string; todas: Date[]; folga: Date[]; pagamento: Date[] }> = {}
-            for (const r of registros) {
-                if (!r.criador || !r.escala) continue
-                const matricula = r.criador.matricula
-                const nome = r.criador.nome
-                const recesso = r.escala.recesso?.descricao || ''
+            for (const e of escalas) {
+                const recesso = e.recesso?.descricao || ''
+                let matricula = e.servidorMatricula || ''
+                let nome = e.nome || ''
+                if (!matricula || !nome) {
+                    const fromSolic = mapCriadorByEscala.get(e.id)
+                    if (fromSolic) { matricula = fromSolic.matricula; nome = fromSolic.nome }
+                }
+                if (!nome) continue
+                if (!matricula) matricula = 'N/D'
                 const key = `${matricula}|${recesso}`
                 if (!byKey[key]) byKey[key] = { matricula, nome, recesso, todas: [], folga: [], pagamento: [] }
-                const dt = r.escala.dataEscala
+                const dt = e.dataEscala
                 if (!dt) continue
                 byKey[key].todas.push(dt)
-                if (r.escala.recebePagamento) byKey[key].pagamento.push(dt)
+                if (e.recebePagamento) byKey[key].pagamento.push(dt)
                 else byKey[key].folga.push(dt)
             }
 
-            const result: Array<{ matricula: string; nome: string; recesso: string; periodoEscalado: string[]; preferenciaFolga: string[]; preferenciaPagamento: string[] }> = []
+            const result: Array<{ 
+                matricula: string; 
+                nome: string; 
+                recesso: string; 
+                periodoEscalado: string[]; 
+                preferenciaFolga: string[]; 
+                preferenciaPagamento: string[] 
+            }> = []
             for (const k of Object.keys(byKey)) {
                 const g = byKey[k]
                 g.todas.sort((a, b) => a.getTime() - b.getTime())
@@ -75,7 +105,7 @@ export class EscalaService {
                     preferenciaPagamento: agruparPorMes(g.pagamento),
                 })
             }
-            return result
+            return  result
         } catch (error: any) {
             throw new Error(`Erro ao buscar todas as escalas. ${error.message || error}`)
         }
@@ -290,6 +320,14 @@ export class EscalaService {
                 continue
             }
             const nomeFinal = `${nome} - ${dt.toISOString().slice(0,10)}`
+            const jaExiste = await this.prismaService.escala.findFirst({
+                where: { nome: nomeFinal, recessoId },
+                select: { id: true }
+            })
+            if (jaExiste) {
+                resultados.push({ skip: true })
+                continue
+            }
             try {
                 const escala = await this.prismaService.escala.create({
                     data: {

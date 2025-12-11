@@ -32,10 +32,9 @@ model RegistroTipo1 {
 
 model RegistroTipo10 {
   id         String @id @default(uuid())
-  ultimo_nsr Int
+  ultimo_nsr Int    @unique
   origem     String @unique
 
-  @@unique([ultimo_nsr]) // <- evita duplicatas
   @@map("registros_ultimo_nsr")
 }
 
@@ -50,34 +49,33 @@ model MarcacoesRelogio {
   crc          String
   origem       String?
 
-  @@unique([nsr, cpfEmpregado, data, hora, origem]) // <- evita duplicatas
+  @@unique([nsr, cpfEmpregado, data, hora, origem])
   @@map("marcacões_de_ponto")
 }
 
 model EspelhoDiario {
-  id               Int     @id @default(autoincrement())
-  cpf              String
-  mesAno           String
-  diaDoMes         String
-  credito          Float
-  debito           Float
-  horasNormais     Float
-  horasExtras      Float
-  saldo            Float
-  motivoReajuste   String?
-  data             String
-  primeiraEntrada  String?
-  primeiraSaida    String?
-  segundaEntrada   String?
-  segundaSaida     String?
-  horasTrabalhadas Float
-  horasAlmoco      Float   @map("horas_do_almoco")
-  bancoDeHoras     Float
-  observacoes      String
-  status           String
-  origem           String?
-
-  EspelhoMensal EspelhoMensal[]
+  id                           Int                            @id @default(autoincrement())
+  cpf                          String
+  mesAno                       String
+  diaDoMes                     String
+  credito                      Float
+  debito                       Float
+  horasNormais                 Float
+  horasExtras                  Float
+  saldo                        Float
+  motivoReajuste               String?
+  data                         String
+  primeiraEntrada              String?
+  primeiraSaida                String?
+  segundaEntrada               String?
+  segundaSaida                 String?
+  horasTrabalhadas             Float
+  observacoes                  String
+  status                       String
+  origem                       String?
+  bancoDeHoras                 Float
+  horasAlmoco                  Float                          @map("horas_do_almoco")
+  EspelhoDiarioToEspelhoMensal EspelhoDiarioToEspelhoMensal[]
 
   @@map("espelho_diario")
 }
@@ -117,21 +115,20 @@ model EspelhoDePontoMensal {
 }
 
 model EspelhoMensal {
-  id                    String          @id @default(uuid())
-  cpf                   String
-  mesAno                String          @map("mes_ano")
-  diasUteis             Int             @map("dias_uteis")
-  diasTrabalhados       Int             @map("dias_trabalhados")
-  registrosCorretos     Int?            @map("dias_corridos")
-  ajustesEAbonos        Int?            @map("ajustes_e_abonos")
-  faltas                Int?
-  totalHorasTrabalhadas Float           @map("totoal_de_horas_trabalhadas")
-  totalHorasDevidas     Float           @map("total_de_horas_devidas")
-  saldoHoras            Float           @map("saldo_horas")
-  registros             EspelhoDiario[]
-  dataCriacao           DateTime        @default(now()) @map("data_criacao")
-
-  MesAberto Boolean @default(false)
+  id                           String                         @id @default(uuid())
+  cpf                          String
+  mesAno                       String                         @map("mes_ano")
+  diasUteis                    Int                            @map("dias_uteis")
+  diasTrabalhados              Int                            @map("dias_trabalhados")
+  registrosCorretos            Int?                           @map("dias_corridos")
+  ajustesEAbonos               Int?                           @map("ajustes_e_abonos")
+  faltas                       Int?
+  totalHorasTrabalhadas        Float                          @map("totoal_de_horas_trabalhadas")
+  totalHorasDevidas            Float                          @map("total_de_horas_devidas")
+  saldoHoras                   Float                          @map("saldo_horas")
+  dataCriacao                  DateTime                       @default(now()) @map("data_criacao")
+  MesAberto                    Boolean                        @default(false)
+  EspelhoDiarioToEspelhoMensal EspelhoDiarioToEspelhoMensal[]
 
   @@unique([cpf, mesAno])
   @@map("espelho_de_atual")
@@ -152,22 +149,130 @@ model Frequencia {
 
 model BancoDeHoras {
   id                String   @id @default(uuid())
-  cpf               String
+  cpf               String   @unique
   saldoHoras        Float
   ultimaAtualizacao DateTime @default(now()) @map("ultima_atualizacao")
 
-  @@unique([cpf])
   @@map("banco_de_horas")
 }
 
+model Recesso {
+  id                   String   @id @default(uuid())
+  ano                  DateTime @map("ano")
+  descricao            String   @map("descricao")
+  processoSei          String   @map("processo_sei")
+  abertoParaFrequencia Boolean  @default(false) @map("aberto_para_frequencia")
+  DataInicial          DateTime @map("data_inicial")
+  dataFinal            DateTime @map("data_final")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+  escalas              Escala[]
 
-// modelos para trabalhar com futures do recesso
-/*
-recesso
-role
-solicitaçõesStatus
-Chefia
-*/
+  @@index([ano])
+}
+
+model Lotacao {
+  id      String   @id @default(uuid())
+  nome    String   @unique
+  codigo  String?
+  escalas Escala[]
+}
+
+model Escala {
+  id                String        @id @default(uuid())
+  nome              String
+  lotacaoId         String
+  recebePagamento   Boolean       @default(false)
+  escalado          Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime?
+  recessoId         String
+  dataEscala        DateTime      @map("data_escala")
+  chefeId           String?
+  chefeMatricula    String?
+  motivo            String?
+  servidorId        String?
+  servidorMatricula String?
+  chefe             Funcionario?  @relation("EscalaChefe", fields: [chefeId], references: [id])
+  lotacao           Lotacao       @relation(fields: [lotacaoId], references: [id])
+  recesso           Recesso       @relation(fields: [recessoId], references: [id], onDelete: Cascade)
+  servidor          Funcionario?  @relation("EscalaServidor", fields: [servidorId], references: [id])
+  solicitacoes      Solicitacao[]
+
+  @@unique([nome, recessoId])
+  @@index([recessoId])
+  @@index([lotacaoId])
+  @@index([servidorId])
+  @@index([chefeId])
+}
+
+model Funcionario {
+  id                    String        @id @default(uuid())
+  nome                  String
+  matricula             String        @unique
+  email                 String?       @unique
+  role                  Role          @default(USER)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime?
+  managerId             String?
+  escalasComoChefe      Escala[]      @relation("EscalaChefe")
+  escalasComoServidor   Escala[]      @relation("EscalaServidor")
+  manager               Funcionario?  @relation("ManagerRelation", fields: [managerId], references: [id])
+  subordinates          Funcionario[] @relation("ManagerRelation")
+  solicitacoesAprovadas Solicitacao[] @relation("Aprovador")
+  solicitacoesCriadas   Solicitacao[] @relation("Criador")
+
+  @@index([role])
+}
+
+model Solicitacao {
+  id          String            @id @default(uuid())
+  escalaId    String
+  criadorId   String
+  aprovadorId String?
+  status      SolicitacaoStatus @default(PENDENTE)
+  motivo      String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime?
+  aprovador   Funcionario?      @relation("Aprovador", fields: [aprovadorId], references: [id])
+  criador     Funcionario       @relation("Criador", fields: [criadorId], references: [id])
+  escala      Escala            @relation(fields: [escalaId], references: [id], onDelete: Cascade)
+
+  @@index([escalaId])
+  @@index([criadorId])
+  @@index([aprovadorId])
+  @@index([status])
+}
+
+model EspelhoDiarioToEspelhoMensal {
+  A                Int
+  B                String
+  espelho_diario   EspelhoDiario @relation(fields: [A], references: [id], onDelete: Cascade)
+  espelho_de_atual EspelhoMensal @relation(fields: [B], references: [id], onDelete: Cascade)
+
+  @@id([A, B], map: "_EspelhoDiarioToEspelhoMensal_AB_pkey")
+  @@index([B], map: "_EspelhoDiarioToEspelhoMensal_B_index")
+  @@map("_EspelhoDiarioToEspelhoMensal")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model sarh_funcionario {
+  COD_FUNCIONARIO Decimal? @db.Decimal(10, 0)
+  CPF             String?  @db.VarChar(4000)
+  NOME            String?  @db.VarChar(50)
+  MATRICULA       String?  @db.VarChar(15)
+  E_MAIL          String?  @db.VarChar(60)
+  ENDERECO        String?  @db.VarChar(100)
+  BAIRRO          String?  @db.VarChar(50)
+  CIDADE          String?  @db.VarChar(50)
+  TELEFONE        String?  @db.VarChar(20)
+  ID_TIPO_LOTACAO Int?
+  LOTACAO         String?  @db.VarChar(120)
+  SIGLA           String?  @db.VarChar(20)
+  CARGO           String?  @db.VarChar(100)
+
+  @@ignore
+}
 
 enum Role {
   USER
@@ -180,98 +285,4 @@ enum SolicitacaoStatus {
   APROVADA
   RECUSADA
   CANCELADA
-}
-
-model Recesso {
-  id String @id @default(uuid())
-  ano DateTime @map("ano")
-  descricao String @map("descricao")
-  processoSei String @map("processo_sei")
-  abertoParaFrequencia Boolean @default(false) @map("aberto_para_frequencia")
-  DataInicial DateTime @map("data_inicial")
-  dataFinal DateTime @map("data_final")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  escalas     Escala[]
-  @@index([ano])
-}
-
-model Lotacao {
-  id    String @id @default(uuid())
-  nome  String
-  codigo String? 
-
-  escalas Escala[]
-  @@unique([nome])
-}
-
-model Escala {
-  id           String   @id @default(uuid())
-  nome         String
-  lotacaoId    String
-  dataEscala   DateTime @map("data_escala")
-  recebePagamento Boolean @default(false)
-  escalado     Boolean @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime?
-  recessoId    String
-  servidorId   String?
-  servidorMatricula String?
-  chefeId      String?
-  chefeMatricula String?
-  motivo       String?
-
-  recesso      Recesso @relation(fields: [recessoId], references: [id], onDelete: Cascade)
-  lotacao      Lotacao @relation(fields: [lotacaoId], references: [id], onDelete: Restrict)
-  servidor     Funcionario? @relation("EscalaServidor", fields: [servidorId], references: [id])
-  chefe        Funcionario? @relation("EscalaChefe", fields: [chefeId], references: [id])
-  solicitacoes Solicitacao[]
-
-  @@index([recessoId])
-  @@index([lotacaoId])
-  @@index([servidorId])
-  @@index([chefeId])
-  @@unique([nome, recessoId]) // evita duplicação de nomes de escala no mesmo recesso
-}
-
-model Funcionario {
-  id         String  @id @default(uuid())
-  nome       String
-  matricula  String  @unique
-  email      String? @unique
-  role       Role     @default(USER)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime?
-  managerId  String? 
-
-  manager    Funcionario? @relation("ManagerRelation", fields: [managerId], references: [id])
-  subordinates Funcionario[] @relation("ManagerRelation")
-
-  solicitacoesCriadas Solicitacao[] @relation("Criador")
-  solicitacoesAprovadas Solicitacao[] @relation("Aprovador")
-  escalasComoServidor Escala[] @relation("EscalaServidor")
-  escalasComoChefe Escala[] @relation("EscalaChefe")
-
-  @@index([role])
-}
-
-model Solicitacao {
-  id           String @id @default(uuid())
-  escalaId     String
-  criadorId    String
-  aprovadorId  String?    // chefe que aprovou/recusou; null enquanto PENDENTE
-  status       SolicitacaoStatus @default(PENDENTE)
-  motivo       String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime?
-
-  escala        Escala     @relation(fields: [escalaId], references: [id], onDelete: Cascade)
-  criador       Funcionario @relation("Criador", fields: [criadorId], references: [id])
-  aprovador     Funcionario? @relation("Aprovador", fields: [aprovadorId], references: [id])
-
-  @@index([escalaId])
-  @@index([criadorId])
-  @@index([aprovadorId])
-  @@index([status])
 }

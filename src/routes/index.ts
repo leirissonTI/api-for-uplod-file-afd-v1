@@ -6,6 +6,7 @@ import { escalaRoutes } from "./escala-routes"
 import { servidorRoutes } from "./servidores-routes"
 import { lotacaoRoutes } from "./lotacao-routes"
 import { solicitacoesRouter } from "./solicitacoes-routes"
+import { dashboardRoutes } from "./dashboard-routes"
 
 export const routes = Router()
 
@@ -17,3 +18,4 @@ routes.use('/lotacao', lotacaoRoutes)
 routes.use('/escala', escalaRoutes)
 routes.use('/servidor', servidorRoutes)
 routes.use('/solicitacoes', solicitacoesRouter)
+routes.use('/dashboard', dashboardRoutes)
