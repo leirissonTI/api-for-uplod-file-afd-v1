@@ -9,8 +9,9 @@ import { EspelhoDiario, Prisma } from '../generated/prisma'
 export class EspelhoPontoService {
 
     async getEspelhoDiario() {
-        const espelhoDiario = prisma.espelhoDiario.findMany()
-        return espelhoDiario
+        const sql = `SELECT "cpf","mesAno","diaDoMes","credito","debito","horasNormais","horasExtras","saldo","motivoReajuste","data","primeiraEntrada","primeiraSaida","segundaEntrada","segundaSaida","horasTrabalhadas","observacoes","status","origem","horas_do_almoco" AS "horasAlmoco","bancoDeHoras" FROM "espelho_diario"`
+        const rows = await prisma.$queryRawUnsafe<any[]>(sql)
+        return rows
     }
 
     async getEspelhoDiarioPorMes(cpf: string, inicioDoMes: Date) {
@@ -22,15 +23,8 @@ export class EspelhoPontoService {
             const mesAnoSemZero = `${mesNumero}/${anoNumero}`;
 
             // Buscar registros no banco com CPF e filtro no campo `mesAno`
-            const registros = await prisma.espelhoDiario.findMany({
-                where: {
-                    cpf: cpf,
-                    mesAno: { in: [mesAnoComZero, mesAnoSemZero] }
-                },
-                orderBy: {
-                    data: 'asc'
-                }
-            });
+            const sql = `SELECT "cpf","mesAno","diaDoMes","credito","debito","horasNormais","horasExtras","saldo","motivoReajuste","data","primeiraEntrada","primeiraSaida","segundaEntrada","segundaSaida","horasTrabalhadas","observacoes","status","origem","horas_do_almoco" AS "horasAlmoco","bancoDeHoras" FROM "espelho_diario" WHERE "cpf" = '${cpf.replace(/'/g, "''")}' AND "mesAno" IN ('${mesAnoComZero}','${mesAnoSemZero}') ORDER BY "data" ASC`
+            const registros = await prisma.$queryRawUnsafe<any[]>(sql)
 
             return registros
 
