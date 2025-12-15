@@ -1,8 +1,45 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SolicitacoesController = void 0;
 const create_solicitacoes_dto_1 = require("../dtos/solicitacoes/create-solicitacoes.dto");
-const update_solicitacoes_1 = require("../dtos/solicitacoes/update-solicitacoes");
+const UpdateSolicitacaoModule = __importStar(require("../dtos/solicitacoes/update-solicitacoes"));
+const path_1 = __importDefault(require("path"));
 class SolicitacoesController {
     solicitacoesService;
     constructor(solicitacoesService) {
@@ -57,7 +94,7 @@ class SolicitacoesController {
         try {
             // validar o body da requisição
             const id = req.params.id;
-            const body = update_solicitacoes_1.UpdateSchemaSolicitacao.parse(req.body);
+            const body = UpdateSolicitacaoModule.UpdateSchemaSolicitacao.parse(req.body);
             const atualizada = await this.solicitacoesService.updateSolicitacao(id, body);
             return res.status(200).json({ success: true, message: 'Solicitação atualizada com sucesso.' });
         }
@@ -76,6 +113,21 @@ class SolicitacoesController {
         }
         catch (error) {
             return res.status(500).json({ success: false, error: 'Erro ao deletar solicitação', message: `${error.message || error}` });
+        }
+    }
+    async importFromCsvBackup(req, res) {
+        try {
+            const recessoId = String(req.query.recessoId || req.params.recessoId || '').trim();
+            if (!recessoId)
+                return res.status(400).json({ success: false, error: 'Parâmetros inválidos', message: 'Informe recessoId' });
+            if (!req.file)
+                return res.status(400).json({ success: false, error: 'Arquivo não enviado', message: 'Envie um arquivo CSV no campo file' });
+            const filePath = path_1.default.resolve(req.file.path);
+            const resultado = await this.solicitacoesService.importFromCsvBackup(filePath, recessoId);
+            return res.status(200).json({ success: true, message: 'Importação de frequências concluída.', data: resultado });
+        }
+        catch (error) {
+            return res.status(500).json({ success: false, error: 'Erro ao importar frequências do backup', message: `${error.message || error}` });
         }
     }
 }

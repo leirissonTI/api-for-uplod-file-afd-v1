@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.frequenciaRoutes = void 0;
+const express_1 = require("express");
+const frequencia_controller_1 = require("../controllers/frequencia-controller");
+const frequencia_service_1 = require("../services/frequencia-service");
+const frequenciaController = new frequencia_controller_1.FrequenciaController(new frequencia_service_1.FrequenciaService());
+exports.frequenciaRoutes = (0, express_1.Router)();
+exports.frequenciaRoutes.post('/importar', ((req, res) => { frequenciaController.importar(req, res); }));
+exports.frequenciaRoutes.get('/por-recesso', ((req, res) => { frequenciaController.listarPorRecesso(req, res); }));
+exports.frequenciaRoutes.get('/por-recesso/:recessoId', ((req, res) => { frequenciaController.listarPorRecesso(req, res); }));

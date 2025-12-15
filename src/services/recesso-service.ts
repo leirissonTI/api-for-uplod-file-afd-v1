@@ -181,12 +181,15 @@ export class RecessoService {
             if (!chefe) {
                 throw new Error(`Chefe com matrícula ${chefeMatricula} não encontrado.`)
             }
+            const escala = await this.prismaService.escala.findUnique({ where: { id: escalaId }, select: { dataEscala: true } })
+            if (!escala) throw new Error(`Escala ${escalaId} não encontrada.`)
             const solicitacao = await this.prismaService.solicitacao.create({
                 data: {
                     escalaId,
                     criadorId,
                     aprovadorId: chefe.id,
                     motivo: motivo ?? null,
+                    dia: escala.dataEscala,
                 }
             })
             return solicitacao

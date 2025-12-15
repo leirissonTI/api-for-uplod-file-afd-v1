@@ -7,3 +7,4 @@ const dashboard_service_1 = require("../services/dashboard-service");
 const dashboardController = new dashboard_controller_1.DashboardController(new dashboard_service_1.DashboardService());
 exports.dashboardRoutes = (0, express_1.Router)();
 exports.dashboardRoutes.get('/servidores-resumo', ((req, res) => { dashboardController.getResumoServidores(req, res); }));
+exports.dashboardRoutes.get('/escala-espelho-join', ((req, res) => { dashboardController.getEscalaEspelhoJoin(req, res); }));

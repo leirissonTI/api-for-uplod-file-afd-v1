@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
 import { SolicitacoesService } from "../services/solicitacoes-service";
 import { CreateSchemaSolicitacao } from "../dtos/solicitacoes/create-solicitacoes.dto";
-import { UpdateSchemaSolicitacao } from "../dtos/solicitacoes/update-solicitacoes";
+import * as UpdateSolicitacaoModule from "../dtos/solicitacoes/update-solicitacoes";
 import { string } from "zod";
+import path from "path";
 
 
 export class SolicitacoesController {
@@ -56,7 +57,7 @@ export class SolicitacoesController {
         try {
             // validar o body da requisição
             const id = req.params.id as string
-            const body = UpdateSchemaSolicitacao.parse(req.body);
+            const body = UpdateSolicitacaoModule.UpdateSchemaSolicitacao.parse(req.body);
             const atualizada = await this.solicitacoesService.updateSolicitacao(id, body);
             return res.status(200).json({ success: true, message: 'Solicitação atualizada com sucesso.' })
         } catch (error) {
@@ -74,6 +75,19 @@ export class SolicitacoesController {
             return res.status(200).json({ success: true, message: 'Solicitação deletada com sucesso.' })
         } catch (error) {
             return res.status(500).json({ success: false, error: 'Erro ao deletar solicitação', message: `${(error as any).message || error}` })
+        }
+    }
+
+    async importFromCsvBackup(req: Request, res: Response) {
+        try {
+            const recessoId = String(req.query.recessoId || req.params.recessoId || '').trim()
+            if (!recessoId) return res.status(400).json({ success: false, error: 'Parâmetros inválidos', message: 'Informe recessoId' })
+            if (!req.file) return res.status(400).json({ success: false, error: 'Arquivo não enviado', message: 'Envie um arquivo CSV no campo file' })
+            const filePath = path.resolve((req.file as any).path as string)
+            const resultado = await this.solicitacoesService.importFromCsvBackup(filePath, recessoId)
+            return res.status(200).json({ success: true, message: 'Importação de frequências concluída.', data: resultado })
+        } catch (error) {
+            return res.status(500).json({ success: false, error: 'Erro ao importar frequências do backup', message: `${(error as any).message || error}` })
         }
     }
 }

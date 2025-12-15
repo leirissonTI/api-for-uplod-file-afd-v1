@@ -31,14 +31,13 @@ class ServidorService {
     }
     async buscarPorNome(nome) {
         try {
-            return await this.prismaService.funcionario.findMany({
+            const rows = await this.prismaService.funcionario.findMany({
                 where: { nome: { contains: nome, mode: 'insensitive' } },
                 select: {
                     id: true,
                     nome: true,
                     email: true,
                     matricula: true,
-                    role: true,
                     createdAt: true,
                     updatedAt: true,
                 }
@@ -152,6 +151,51 @@ class ServidorService {
         const res2 = semEmail.length ? await this.prismaService.funcionario.createMany({ data: semEmail, skipDuplicates: true }) : { count: 0 };
         const inseridos = (res1.count || 0) + (res2.count || 0);
         return { recebidos, inseridos, ignorados, invalidos, erros };
+    }
+    async importarDoSarh() {
+        try {
+            const rows = await this.prismaService.sarh_funcionario.findMany({
+                select: { NOME: true, MATRICULA: true, E_MAIL: true }
+            });
+            const erros = [];
+            const emailRegex = /.+@.+\..+/;
+            const recebidos = rows.length;
+            const mapMat = new Map();
+            for (const r of rows) {
+                const nome = String(r.NOME || '').trim();
+                const matricula = String(r.MATRICULA || '').trim();
+                let email = String(r.E_MAIL || '').trim().toLowerCase();
+                if (!nome || !matricula)
+                    continue;
+                if (email && !emailRegex.test(email))
+                    email = '';
+                if (!mapMat.has(matricula))
+                    mapMat.set(matricula, { nome, matricula, email: email || undefined });
+            }
+            let inseridos = 0;
+            let atualizados = 0;
+            let ignorados = recebidos - mapMat.size;
+            for (const r of mapMat.values()) {
+                try {
+                    const exists = await this.prismaService.funcionario.findUnique({ where: { matricula: r.matricula } });
+                    if (exists) {
+                        await this.prismaService.funcionario.update({ where: { matricula: r.matricula }, data: { nome: r.nome, email: r.email } });
+                        atualizados++;
+                    }
+                    else {
+                        await this.prismaService.funcionario.create({ data: { nome: r.nome, matricula: r.matricula, email: r.email, role: 'USER' } });
+                        inseridos++;
+                    }
+                }
+                catch (e) {
+                    erros.push(e?.message || String(e));
+                }
+            }
+            return { recebidos, inseridos, atualizados, ignorados, invalidos: 0, erros };
+        }
+        catch (error) {
+            throw new Error(`Erro ao importar servidores do SARH. ${error.message}`);
+        }
     }
     /**
      * Atualiza um servidor existente.

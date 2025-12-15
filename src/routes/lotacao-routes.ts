@@ -12,3 +12,4 @@ lotacaoRoutes.get("/search",((req: Request, res: Response) => { lotacaoControlle
 lotacaoRoutes.post("/create",((req: Request, res: Response) => { lotacaoController.createLotacao(req, res) }) as RequestHandler)
 lotacaoRoutes.patch("/update/:id",((req: Request, res: Response) => { lotacaoController.updateLotacao(req, res) }) as RequestHandler)
 lotacaoRoutes.delete("/delete/:id",((req: Request, res: Response) => { lotacaoController.deleteLotacao(req, res) }) as RequestHandler)
+lotacaoRoutes.post("/import/from-sarh",((req: Request, res: Response) => { lotacaoController.importarDoSarh(req, res) }) as RequestHandler)

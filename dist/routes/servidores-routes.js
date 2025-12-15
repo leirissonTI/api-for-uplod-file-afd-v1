@@ -14,6 +14,7 @@ exports.servidorRoutes.get('/search', ((req, res) => { servidorController.buscar
 exports.servidorRoutes.post('/create', ((req, res) => { servidorController.createServidor(req, res); }));
 exports.servidorRoutes.post('/create/bulk', multerConfig_1.upload.single('file'), ((req, res) => { servidorController.importarServidoresEmLote(req, res); }));
 exports.servidorRoutes.post('/create', ((req, res) => { servidorController.createServidor(req, res); }));
+exports.servidorRoutes.post('/import/from-sarh', ((req, res) => { servidorController.importarDoSarh(req, res); }));
 exports.servidorRoutes.get('/:id', ((req, res) => { servidorController.getServidorById(req, res); }));
 exports.servidorRoutes.put('/:id', ((req, res) => { servidorController.updateServidor(req, res); }));
 exports.servidorRoutes.delete('/:id', ((req, res) => { servidorController.deleteServidor(req, res); }));

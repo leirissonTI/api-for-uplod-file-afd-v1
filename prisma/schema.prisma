@@ -226,17 +226,27 @@ model Funcionario {
 }
 
 model Solicitacao {
-  id          String            @id @default(uuid())
-  escalaId    String
-  criadorId   String
-  aprovadorId String?
-  status      SolicitacaoStatus @default(PENDENTE)
-  motivo      String?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime?
-  aprovador   Funcionario?      @relation("Aprovador", fields: [aprovadorId], references: [id])
-  criador     Funcionario       @relation("Criador", fields: [criadorId], references: [id])
-  escala      Escala            @relation(fields: [escalaId], references: [id], onDelete: Cascade)
+  id                String            @id @default(uuid())
+  escalaId          String
+  criadorId         String
+  aprovadorId       String?
+  status            SolicitacaoStatus @default(PENDENTE)
+  motivo            String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime?
+  servidorMatricula String?
+  dia               DateTime
+  entrada1          DateTime?
+  entrada2          DateTime?
+  lotacao           String?
+  nomeChefia        String?
+  opcao             String?
+  saida1            DateTime?
+  saida2            DateTime?
+  nomeServidor      String?
+  aprovador         Funcionario?      @relation("Aprovador", fields: [aprovadorId], references: [id])
+  criador           Funcionario       @relation("Criador", fields: [criadorId], references: [id])
+  escala            Escala            @relation(fields: [escalaId], references: [id], onDelete: Cascade)
 
   @@index([escalaId])
   @@index([criadorId])
@@ -257,7 +267,7 @@ model EspelhoDiarioToEspelhoMensal {
 
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
 model sarh_funcionario {
-  COD_FUNCIONARIO Decimal? @db.Decimal(10, 0)
+  COD_FUNCIONARIO Decimal @db.Decimal(10, 0)
   CPF             String?  @db.VarChar(4000)
   NOME            String?  @db.VarChar(50)
   MATRICULA       String?  @db.VarChar(15)
@@ -271,7 +281,7 @@ model sarh_funcionario {
   SIGLA           String?  @db.VarChar(20)
   CARGO           String?  @db.VarChar(100)
 
-  @@ignore
+  @@id([COD_FUNCIONARIO])
 }
 
 enum Role {

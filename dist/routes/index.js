@@ -10,6 +10,8 @@ const servidores_routes_1 = require("./servidores-routes");
 const lotacao_routes_1 = require("./lotacao-routes");
 const solicitacoes_routes_1 = require("./solicitacoes-routes");
 const dashboard_routes_1 = require("./dashboard-routes");
+const frequencia_routes_1 = require("./frequencia-routes");
+const sarh_routes_1 = require("./sarh-routes");
 exports.routes = (0, express_1.Router)();
 // rotas da aplicação
 exports.routes.use('/afd-registros', arquivo_afd_routes_1.arquivoAfdRoutes);
@@ -18,5 +20,7 @@ exports.routes.use('/recesso', recesso_routes_1.recessoRoutes);
 exports.routes.use('/lotacao', lotacao_routes_1.lotacaoRoutes);
 exports.routes.use('/escala', escala_routes_1.escalaRoutes);
 exports.routes.use('/servidor', servidores_routes_1.servidorRoutes);
-exports.routes.use('/solicitacoes', solicitacoes_routes_1.solicitacoesRouter);
+exports.routes.use('/registros-de-ponto-recesso', solicitacoes_routes_1.solicitacoesRouter);
 exports.routes.use('/dashboard', dashboard_routes_1.dashboardRoutes);
+exports.routes.use('/frequencias', frequencia_routes_1.frequenciaRoutes);
+exports.routes.use('/sarh', sarh_routes_1.sarhRoutes);

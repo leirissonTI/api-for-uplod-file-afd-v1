@@ -242,11 +242,11 @@ class EscalaService {
      */
     async createEscalaServidor(data) {
         const { nome, lotacaoId, recessoId, dataEscala, diasEscala, receberPagamento, escalado, servidorId, servidorMatricula, chefeId, chefeMatricula, motivo } = data;
-        console.log({ nome, lotacaoId, recessoId, dataEscala, diasEscala, receberPagamento, escalado, servidorId, servidorMatricula, chefeId, chefeMatricula, motivo });
+        console.log({ nome, lotacaoId, recessoId, dataEscala, diasEscala, receberPagamento, escalado, servidorId, chefeId, chefeMatricula, motivo });
         const recesso = await this.prismaService.recesso.findUnique({ where: { id: recessoId }, select: { id: true, DataInicial: true, dataFinal: true } });
         if (!recesso)
             throw new Error(`Recesso ${recessoId} não encontrado.`);
-        const lotacao = await this.prismaService.lotacao.findUnique({ where: { id: lotacaoId }, select: { id: true } });
+        const lotacao = await this.prismaService.lotacao.findUnique({ where: { id: lotacaoId }, select: { id: true, nome: true } });
         if (!lotacao)
             throw new Error(`Lotação ${lotacaoId} não encontrada.`);
         const datasOpcao = [];
@@ -280,18 +280,30 @@ class EscalaService {
             throw new Error('Informe dataEscala ou diasEscala');
         }
         let criadorIdFinal = servidorId || null;
+        let servidorNome;
         if (!criadorIdFinal && servidorMatricula) {
-            const srv = await this.prismaService.funcionario.findUnique({ where: { matricula: servidorMatricula }, select: { id: true } });
+            const srv = await this.prismaService.funcionario.findUnique({ where: { matricula: servidorMatricula }, select: { id: true, nome: true } });
             if (!srv)
                 throw new Error(`Servidor com matrícula ${servidorMatricula} não encontrado.`);
             criadorIdFinal = srv.id;
+            servidorNome = srv.nome;
+        }
+        else if (criadorIdFinal) {
+            const srv = await this.prismaService.funcionario.findUnique({ where: { id: criadorIdFinal }, select: { nome: true } });
+            servidorNome = srv?.nome;
         }
         let aprovadorIdFinal = chefeId || null;
+        let chefeNome;
         if (!aprovadorIdFinal && chefeMatricula) {
-            const ch = await this.prismaService.funcionario.findUnique({ where: { matricula: chefeMatricula }, select: { id: true } });
+            const ch = await this.prismaService.funcionario.findUnique({ where: { matricula: chefeMatricula }, select: { id: true, nome: true } });
             if (!ch)
                 throw new Error(`Chefe com matrícula ${chefeMatricula} não encontrado.`);
             aprovadorIdFinal = ch.id;
+            chefeNome = ch.nome;
+        }
+        else if (aprovadorIdFinal) {
+            const ch = await this.prismaService.funcionario.findUnique({ where: { id: aprovadorIdFinal }, select: { nome: true } });
+            chefeNome = ch?.nome;
         }
         const resultados = [];
         const normalizeToIso = (x) => {
@@ -302,6 +314,22 @@ class EscalaService {
         };
         const setFolga = new Set((data.escalaFolgar || []).map(x => normalizeToIso(x)).filter(Boolean));
         const setPagamento = new Set((data.escalaReceberPagamento || []).map(x => normalizeToIso(x)).filter(Boolean));
+        // resolver CPF via sarh_funcionario para possível vinculação ao EspelhoDiario
+        let cpfServidor;
+        if (servidorMatricula) {
+            try {
+                const matriculaSafe = servidorMatricula.replace(/'/g, "''");
+                const rows = await this.prismaService.$queryRawUnsafe(`SELECT CPF FROM sarh_funcionario WHERE MATRICULA = '${matriculaSafe}'`);
+                if (rows && rows.length && rows[0].CPF) {
+                    cpfServidor = String(rows[0].CPF);
+                    console.log(`[Solicitacao] CPF resolvido via SARH para matrícula ${servidorMatricula}: ${cpfServidor}`);
+                }
+                else {
+                    console.log(`[Solicitacao] CPF não encontrado via SARH para matrícula ${servidorMatricula}`);
+                }
+            }
+            catch { }
+        }
         for (const item of datasOpcao) {
             const dt = item.dt;
             const opcao = item.opcao;
@@ -310,11 +338,13 @@ class EscalaService {
                 continue;
             }
             const nomeFinal = `${nome} - ${dt.toISOString().slice(0, 10)}`;
+            console.log(`[Escala] Processando data ${dt.toISOString().slice(0, 10)} nomeFinal=${nomeFinal}`);
             const jaExiste = await this.prismaService.escala.findFirst({
                 where: { nome: nomeFinal, recessoId },
                 select: { id: true }
             });
             if (jaExiste) {
+                console.log(`[Escala] Duplicado detectado, pulando criação nome=${nomeFinal} recessoId=${recessoId}`);
                 resultados.push({ skip: true });
                 continue;
             }
@@ -345,15 +375,76 @@ class EscalaService {
                         motivo: motivo || undefined,
                     }
                 });
+                console.log(`[Escala] Criada id=${escala.id} nome=${nomeFinal} recessoId=${recessoId}`);
                 if (criadorIdFinal) {
+                    // opcionalmente vincular ao espelho diário
+                    let espelhoDiarioId;
+                    let e1;
+                    let s1;
+                    let e2;
+                    let s2;
+                    if (cpfServidor) {
+                        const ddPad = String(dt.getDate()).padStart(2, '0');
+                        const ddNoPad = String(dt.getDate());
+                        const mm = String(dt.getMonth() + 1);
+                        const yy = String(dt.getFullYear());
+                        const mesAnoPad = `${mm.padStart(2, '0')}/${yy}`;
+                        const mesAnoNoPad = `${mm}/${yy}`;
+                        const candidato = await this.prismaService.espelhoDiario.findFirst({
+                            where: {
+                                cpf: cpfServidor,
+                                OR: [
+                                    { mesAno: mesAnoPad, diaDoMes: ddPad },
+                                    { mesAno: mesAnoPad, diaDoMes: ddNoPad },
+                                    { mesAno: mesAnoNoPad, diaDoMes: ddPad },
+                                    { mesAno: mesAnoNoPad, diaDoMes: ddNoPad },
+                                ]
+                            },
+                            select: { id: true, primeiraEntrada: true, primeiraSaida: true, segundaEntrada: true, segundaSaida: true }
+                        });
+                        if (candidato) {
+                            espelhoDiarioId = candidato.id;
+                            e1 = candidato.primeiraEntrada || undefined;
+                            s1 = candidato.primeiraSaida || undefined;
+                            e2 = candidato.segundaEntrada || undefined;
+                            s2 = candidato.segundaSaida || undefined;
+                            console.log(`[EspelhoDiario] Vinculado id=${espelhoDiarioId} cpf=${cpfServidor} mesAno=${mesAnoPad} dia=${ddPad}`);
+                        }
+                        else {
+                            console.log(`[EspelhoDiario] Não encontrado para cpf=${cpfServidor} mesAno=${mesAnoPad}/${mesAnoNoPad} dia=${ddPad}/${ddNoPad}`);
+                        }
+                    }
                     await this.prismaService.solicitacao.create({
                         data: {
                             escalaId: escala.id,
                             criadorId: criadorIdFinal,
                             aprovadorId: aprovadorIdFinal || null,
                             motivo: motivo || undefined,
+                            // frequência diária
+                            servidorMatricula,
+                            nomeServidor: servidorNome || undefined,
+                            nomeChefia: chefeNome || undefined,
+                            lotacao: lotacao.nome || undefined,
+                            dia: dt,
+                            entrada1: e1,
+                            saida1: s1,
+                            entrada2: e2,
+                            saida2: s2,
+                            opcao: (() => {
+                                const iso = dt.toISOString().slice(0, 10);
+                                if (setPagamento.has(iso))
+                                    return 'PAGAMENTO';
+                                if (setFolga.has(iso))
+                                    return 'FOLGA';
+                                if (opcao === 'pagamento')
+                                    return 'PAGAMENTO';
+                                if (opcao === 'folga')
+                                    return 'FOLGA';
+                                return (!!receberPagamento ? 'PAGAMENTO' : 'FOLGA');
+                            })(),
                         }
                     });
+                    console.log(`[Solicitacao] Criada para escala=${escala.id} criador=${criadorIdFinal} dia=${dt.toISOString().slice(0, 10)} opcao=${opcao || (receberPagamento ? 'pagamento' : 'folga')} espelhoDiarioId=${espelhoDiarioId ?? 'null'}`);
                 }
                 resultados.push({ criada: escala });
             }
@@ -362,6 +453,7 @@ class EscalaService {
                     resultados.push({ skip: true });
                     continue;
                 }
+                console.log(`[Erro] Falha ao criar escala/solicitação: ${error.message || error}`);
                 resultados.push({ erro: error.message });
             }
         }

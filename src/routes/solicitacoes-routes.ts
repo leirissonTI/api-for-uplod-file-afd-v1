@@ -2,6 +2,7 @@ import { Router, Request, Response, RequestHandler } from "express"
 import { SolicitacoesController } from "../controllers/solicitacoes-controller";
 import { SolicitacoesService } from "../services/solicitacoes-service";
 import { prisma } from "../config/prisma";
+import { upload } from "../config/multerConfig";
 
 const solicitacoesController = new SolicitacoesController(new SolicitacoesService(prisma));
 
@@ -23,4 +24,5 @@ solicitacoesRouter.post("/create", createHandler);
 solicitacoesRouter.put("/update/:id", updateHandler);
 solicitacoesRouter.get("/:id", getByIdHandler);
 solicitacoesRouter.delete("/delete/:id", deleteHandler);
+solicitacoesRouter.post("/import/csv", upload.single('file'), ((req: Request, res: Response) => { solicitacoesController.importFromCsvBackup(req, res) }) as RequestHandler);
 

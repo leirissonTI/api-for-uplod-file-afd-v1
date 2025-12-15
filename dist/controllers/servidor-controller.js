@@ -101,6 +101,15 @@ class ServidorController {
             return res.status(500).json({ success: false, error: 'Erro ao importar servidores em lote.', message: `${error.message}` });
         }
     }
+    async importarDoSarh(req, res) {
+        try {
+            const resultado = await this.servidorService.importarDoSarh();
+            return res.status(200).json({ success: true, message: 'Importação do SARH concluída.', data: resultado });
+        }
+        catch (error) {
+            return res.status(500).json({ success: false, error: 'Erro ao importar servidores do SARH.', message: `${error.message}` });
+        }
+    }
     async getServidorById(req, res) {
         try {
             const servidor = await this.servidorService.getServidorById(req.params.id);

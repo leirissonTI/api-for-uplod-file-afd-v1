@@ -4,13 +4,13 @@ import { CreateServidorDto } from "../dtos/servidor/create-servidor.dto";
 import { UpdateServidorDto } from "../dtos/servidor/update-servidor.dto";
 
 export class ServidorService {
-     constructor(private prismaService: PrismaClient = prisma) { }
+    constructor(private prismaService: PrismaClient = prisma) { }
 
     /**
      * Busca todos os servidores.
      * @returns Uma promessa que resolve para um array de servidores.
      */
-    async getAllServidores(){
+    async getAllServidores() {
         try {
             return await this.prismaService.funcionario.findMany({
                 select: {
@@ -28,20 +28,21 @@ export class ServidorService {
         }
     }
 
-    async buscarPorNome(nome: string){
+    async buscarPorNome(nome: string) {
         try {
-            return await this.prismaService.funcionario.findMany({
+            const rows = await this.prismaService.funcionario.findMany({
                 where: { nome: { contains: nome, mode: 'insensitive' as any } },
                 select: {
                     id: true,
                     nome: true,
                     email: true,
                     matricula: true,
-                    role: true,
                     createdAt: true,
                     updatedAt: true,
                 }
             })
+
+
         } catch (error: any) {
             throw new Error(`Erro ao buscar servidores por nome. ${error.message}`)
         }
@@ -52,7 +53,7 @@ export class ServidorService {
      * @param servidor - Os dados do servidor a ser criado.
      * @returns Uma promessa que resolve para o servidor criado.
      */
-    async createServidor(servidor: CreateServidorDto){
+    async createServidor(servidor: CreateServidorDto) {
         try {
             const { nome, email, matricula, role } = servidor
             const emailRegex = /.+@.+\..+/
@@ -75,7 +76,7 @@ export class ServidorService {
      * @param servidor - Os dados do servidor a ser criado.
      * @returns Uma promessa que resolve para o servidor criado.
      */
-    async createServidorEmLote(servidor: CreateServidorDto){
+    async createServidorEmLote(servidor: CreateServidorDto) {
         try {
             const { nome, email, matricula, role } = servidor
             return await this.prismaService.funcionario.create({
@@ -91,7 +92,7 @@ export class ServidorService {
         }
     }
 
-    async getServidorById(id: string){
+    async getServidorById(id: string) {
         try {
             return await this.verificarExistenciaServidor(id)
         } catch (error: any) {
@@ -151,13 +152,53 @@ export class ServidorService {
         return { recebidos, inseridos, ignorados, invalidos, erros }
     }
 
+    async importarDoSarh() {
+        try {
+            const rows = await this.prismaService.sarh_funcionario.findMany({
+                select: { NOME: true, MATRICULA: true, E_MAIL: true }
+            })
+            const erros: string[] = []
+            const emailRegex = /.+@.+\..+/
+            const recebidos = rows.length
+            const mapMat: Map<string, { nome: string; matricula: string; email?: string }> = new Map()
+            for (const r of rows) {
+                const nome = String(r.NOME || '').trim()
+                const matricula = String(r.MATRICULA || '').trim()
+                let email = String(r.E_MAIL || '').trim().toLowerCase()
+                if (!nome || !matricula) continue
+                if (email && !emailRegex.test(email)) email = ''
+                if (!mapMat.has(matricula)) mapMat.set(matricula, { nome, matricula, email: email || undefined })
+            }
+            let inseridos = 0
+            let atualizados = 0
+            let ignorados = recebidos - mapMat.size
+            for (const r of mapMat.values()) {
+                try {
+                    const exists = await this.prismaService.funcionario.findUnique({ where: { matricula: r.matricula } })
+                    if (exists) {
+                        await this.prismaService.funcionario.update({ where: { matricula: r.matricula }, data: { nome: r.nome, email: r.email } })
+                        atualizados++
+                    } else {
+                        await this.prismaService.funcionario.create({ data: { nome: r.nome, matricula: r.matricula, email: r.email, role: 'USER' as Role } })
+                        inseridos++
+                    }
+                } catch (e: any) {
+                    erros.push(e?.message || String(e))
+                }
+            }
+            return { recebidos, inseridos, atualizados, ignorados, invalidos: 0, erros }
+        } catch (error: any) {
+            throw new Error(`Erro ao importar servidores do SARH. ${error.message}`)
+        }
+    }
+
     /**
      * Atualiza um servidor existente.
      * @param id - O ID do servidor a ser atualizado.
      * @param servidor - Os dados do servidor a serem atualizados.
      * @returns Uma promessa que resolve para o servidor atualizado.
      */
-    async updateServidor(id: string, servidor: UpdateServidorDto){
+    async updateServidor(id: string, servidor: UpdateServidorDto) {
         try {
             const { nome, email, matricula, role } = servidor
             const emailRegex = /.+@.+\..+/
@@ -178,9 +219,9 @@ export class ServidorService {
         }
     }
 
-    async deleteServidor(id: string){
+    async deleteServidor(id: string) {
         try {
-            const servidor  = await this.verificarExistenciaServidor(id)
+            const servidor = await this.verificarExistenciaServidor(id)
             return await this.prismaService.funcionario.delete({
                 where: {
                     id: servidor.id,
@@ -189,9 +230,9 @@ export class ServidorService {
         } catch (error: any) {
             throw new Error(`Erro ao deletar servidor. ${error.message}`)
         }
-    }  
+    }
 
-    private async verificarExistenciaServidor(id: string){
+    private async verificarExistenciaServidor(id: string) {
         try {
             const servidor = await this.prismaService.funcionario.findUnique({
                 where: {

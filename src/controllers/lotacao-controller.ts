@@ -108,4 +108,13 @@ export class LotacaoController {
             })
         }
     }
+
+    async importarDoSarh(req: Request, res: Response) {
+        try {
+            const resultado = await this.lotacaoService.importLotacoesFromSarh()
+            return res.status(200).json({ success: true, message: 'Importação de lotações do SARH concluída.', data: resultado })
+        } catch (error: any) {
+            return res.status(500).json({ success: false, error: 'Erro ao importar lotações do SARH.', message: `${error.message || error}` })
+        }
+    }
 }

@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.sarhRoutes = void 0;
+const express_1 = require("express");
+const sarh_controller_1 = require("../controllers/sarh-controller");
+const sarh_import_service_1 = require("../services/sarh-import-service");
+const multerConfig_1 = require("../config/multerConfig");
+const sarhController = new sarh_controller_1.SarhController(new sarh_import_service_1.SarhImportService());
+exports.sarhRoutes = (0, express_1.Router)();
+exports.sarhRoutes.post('/importar-csv', multerConfig_1.upload.single('file'), ((req, res) => { sarhController.importCsv(req, res); }));
+exports.sarhRoutes.get('/listar-funcionarios', ((req, res) => { sarhController.listar(req, res); }));

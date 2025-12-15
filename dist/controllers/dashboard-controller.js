@@ -24,5 +24,17 @@ class DashboardController {
             return res.status(500).json({ success: false, error: 'Erro ao gerar resumo', message: `${error.message || error}` });
         }
     }
+    async getEscalaEspelhoJoin(req, res) {
+        try {
+            const recessoId = String(req.query.recessoId || req.params.recessoId || '');
+            if (!recessoId)
+                return res.status(400).json({ success: false, error: 'Parâmetro recessoId é obrigatório' });
+            const data = await this.dashboardService.getEscalaEspelhoJoin(recessoId);
+            return res.status(200).json({ success: true, message: 'Join Escala x EspelhoDiario', data });
+        }
+        catch (error) {
+            return res.status(500).json({ success: false, error: 'Erro ao executar join', message: `${error.message || error}` });
+        }
+    }
 }
 exports.DashboardController = DashboardController;

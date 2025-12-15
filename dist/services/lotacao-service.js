@@ -89,5 +89,44 @@ class LotacaoService {
             throw new Error(`Erro ao deletar lotação. ${error}`);
         }
     }
+    async importLotacoesFromSarh() {
+        try {
+            const rows = await this.prismaService.$queryRawUnsafe('SELECT DISTINCT "SIGLA","LOTACAO" FROM "sarh_funcionario" WHERE "SIGLA" IS NOT NULL AND "LOTACAO" IS NOT NULL');
+            const recebidos = rows.length;
+            const map = new Map();
+            for (const r of rows) {
+                const nome = String(r.LOTACAO || '').trim();
+                const codigo = String(r.SIGLA || '').trim();
+                if (!nome || !codigo)
+                    continue;
+                if (!map.has(nome))
+                    map.set(nome, { nome, codigo });
+            }
+            const erros = [];
+            let criados = 0;
+            let atualizados = 0;
+            const ignorados = recebidos - map.size;
+            for (const item of map.values()) {
+                try {
+                    const exists = await this.prismaService.lotacao.findUnique({ where: { nome: item.nome } });
+                    if (exists) {
+                        await this.prismaService.lotacao.update({ where: { id: exists.id }, data: { codigo: item.codigo } });
+                        atualizados++;
+                    }
+                    else {
+                        await this.prismaService.lotacao.create({ data: { nome: item.nome, codigo: item.codigo } });
+                        criados++;
+                    }
+                }
+                catch (e) {
+                    erros.push(e?.message || String(e));
+                }
+            }
+            return { recebidos, criados, atualizados, ignorados, erros };
+        }
+        catch (error) {
+            throw new Error(`Erro ao importar lotações do SARH. ${error.message || error}`);
+        }
+    }
 }
 exports.LotacaoService = LotacaoService;
