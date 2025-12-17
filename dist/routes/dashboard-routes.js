@@ -8,3 +8,4 @@ const dashboardController = new dashboard_controller_1.DashboardController(new d
 exports.dashboardRoutes = (0, express_1.Router)();
 exports.dashboardRoutes.get('/servidores-resumo', ((req, res) => { dashboardController.getResumoServidores(req, res); }));
 exports.dashboardRoutes.get('/escala-espelho-join', ((req, res) => { dashboardController.getEscalaEspelhoJoin(req, res); }));
+exports.dashboardRoutes.get('/status-recesso', ((req, res) => { dashboardController.getStatusRecessoPorCpf(req, res); }));

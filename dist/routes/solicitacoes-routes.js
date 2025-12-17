@@ -13,9 +13,15 @@ const createHandler = (req, res) => { solicitacoesController.createSolicitacao(r
 const updateHandler = (req, res) => { solicitacoesController.updateSolicitacao(req, res); };
 const getByIdHandler = (req, res) => { solicitacoesController.getSolicitacaoById(req, res); };
 const deleteHandler = (req, res) => { solicitacoesController.deleteSolicitacao(req, res); };
+const searchHandler = (req, res) => { solicitacoesController.buscarPorMatricula(req, res); };
+const approveHandler = (req, res) => { solicitacoesController.aprovarSolicitacao(req, res); };
+const searchAprovadorHandler = (req, res) => { solicitacoesController.buscarPorAprovadorMatricula(req, res); };
 exports.solicitacoesRouter.get("/all", getAllHandler);
+exports.solicitacoesRouter.get("/search", searchHandler);
+exports.solicitacoesRouter.get("/search/aprovador", searchAprovadorHandler);
 exports.solicitacoesRouter.post("/create", createHandler);
 exports.solicitacoesRouter.put("/update/:id", updateHandler);
+exports.solicitacoesRouter.put("/approve/:id", approveHandler);
 exports.solicitacoesRouter.get("/:id", getByIdHandler);
 exports.solicitacoesRouter.delete("/delete/:id", deleteHandler);
 exports.solicitacoesRouter.post("/import/csv", multerConfig_1.upload.single('file'), ((req, res) => { solicitacoesController.importFromCsvBackup(req, res); }));

@@ -13,7 +13,7 @@ exports.createEscalaDtoSchema = zod_1.z.object({
     nome: zod_1.z.string().min(1, "O nome é obrigatório."),
     lotacaoId: zod_1.z.string().min(1, "A lotação é obrigatória."),
     recessoId: zod_1.z.string().min(1, "O recesso é obrigatório."),
-    chefeId: zod_1.z.string().min(1, "O chefeId é obrigatório."),
+    chefeId: zod_1.z.string().optional(),
     dataEscala: zod_1.z.union([zod_1.z.coerce.date(), zod_1.z.string()]).optional(),
     diasEscala: zod_1.z.array(diaItemSchema).optional(),
     escalaFolgar: zod_1.z.array(zod_1.z.union([zod_1.z.string(), zod_1.z.coerce.date()])).optional(),

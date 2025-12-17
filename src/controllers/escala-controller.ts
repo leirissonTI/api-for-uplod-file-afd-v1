@@ -37,8 +37,10 @@ export class EscalaController {
             if (!recessoId || String(recessoId).trim() === '') {
                 return response.status(400).json({ success: false, error: 'Parâmetros inválidos', message: 'recessoId é obrigatório' })
             }
-            if (!chefeId || String(chefeId).trim() === '') {
-                return response.status(400).json({ success: false, error: 'Parâmetros inválidos', message: 'chefeId é obrigatório' })
+            const chefeIdTrim = String(chefeId || '').trim()
+            const chefeMatTrim = String(chefeMatricula || '').trim()
+            if (!chefeIdTrim && !chefeMatTrim) {
+                return response.status(400).json({ success: false, error: 'Parâmetros inválidos', message: 'Informe chefeId ou chefeMatricula' })
             }
             let invalids: any[] = []
             if (Array.isArray(diasEscala)) {

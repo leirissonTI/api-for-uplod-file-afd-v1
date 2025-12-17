@@ -6,6 +6,10 @@ const querySchema = zod_1.z.object({
     recessoId: zod_1.z.string().min(1),
     meses: zod_1.z.string().optional(),
 });
+const statusQuerySchema = zod_1.z.object({
+    recessoId: zod_1.z.string().min(1),
+    setor: zod_1.z.string().optional(),
+});
 class DashboardController {
     dashboardService;
     constructor(dashboardService) {
@@ -34,6 +38,19 @@ class DashboardController {
         }
         catch (error) {
             return res.status(500).json({ success: false, error: 'Erro ao executar join', message: `${error.message || error}` });
+        }
+    }
+    async getStatusRecessoPorCpf(req, res) {
+        try {
+            const { recessoId, setor } = statusQuerySchema.parse(req.query);
+            const data = await this.dashboardService.getStatusRecessoPorCpf({ recessoId, setor });
+            return res.status(200).json({ success: true, message: 'Status RECESSO por CPF', data });
+        }
+        catch (error) {
+            if (error instanceof zod_1.z.ZodError) {
+                return res.status(400).json({ success: false, error: 'Erro de validação', message: error.issues.map(i => i.message).join(', ') });
+            }
+            return res.status(500).json({ success: false, error: 'Erro ao gerar status de recesso', message: `${error.message || error}` });
         }
     }
 }

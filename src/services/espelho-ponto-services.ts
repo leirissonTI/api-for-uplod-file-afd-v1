@@ -33,10 +33,126 @@ export class EspelhoPontoService {
         }
     }
 
-    async getEspelhomensal() {
-        const espelhoMensal = prisma.espelhoMensal.findMany()
-        return espelhoMensal
+  async getEspelhomensal() {
+    const espelhoMensal = prisma.espelhoMensal.findMany()
+    return espelhoMensal
+  }
+
+  async getEspelhoRecessoSummary(params: { recessoId: string; setor?: string; matricula?: string }) {
+        const recesso = await prisma.recesso.findUnique({ where: { id: params.recessoId }, select: { DataInicial: true, dataFinal: true } })
+        if (!recesso) throw new AppError('Recesso não encontrado.')
+        const start = new Date(recesso.DataInicial)
+        const end = new Date(recesso.dataFinal)
+        const mm1 = String(start.getMonth() + 1)
+        const yy1 = String(start.getFullYear())
+        const mm2 = String(end.getMonth() + 1)
+        const yy2 = String(end.getFullYear())
+        const alvoMeses = [ `${mm1.padStart(2,'0')}/${yy1}`, `${Number(mm1)}/${yy1}`, `${mm2.padStart(2,'0')}/${yy2}`, `${Number(mm2)}/${yy2}` ]
+        const filtroSetor = params.setor ? `AND COALESCE(sf."SIGLA", sf2."SIGLA") = '${String(params.setor).replace(/'/g, "''")}'` : ''
+        const filtroMat = params.matricula ? `AND COALESCE(e."servidorMatricula", s."servidorMatricula", f."matricula") = '${String(params.matricula).replace(/'/g, "''")}'` : ''
+        const sqlCpfs = `
+          SELECT DISTINCT COALESCE(sf."CPF", sf2."CPF") AS cpf,
+                          COALESCE(e."servidorMatricula", s."servidorMatricula", f."matricula") AS matricula,
+                          COALESCE(f."nome", split_part(e."nome", ' - ', 1), s."nomeServidor")   AS nome,
+                          COALESCE(sf."SIGLA", sf2."SIGLA", '') AS setor
+          FROM "Escala" e
+          LEFT JOIN "Solicitacao" s ON s."escalaId" = e."id"
+          LEFT JOIN "Funcionario" f ON f."id" = e."servidorId"
+          LEFT JOIN "sarh_funcionario" sf ON sf."MATRICULA" = e."servidorMatricula"
+          LEFT JOIN "sarh_funcionario" sf2 ON sf2."MATRICULA" = COALESCE(s."servidorMatricula", f."matricula")
+          WHERE e."recessoId" = '${String(params.recessoId).replace(/'/g, "''")}'
+          ${filtroSetor}
+          ${filtroMat}
+        `
+        const pessoas = await prisma.$queryRawUnsafe<Array<{ cpf: string; matricula: string; nome: string; setor: string }>>(sqlCpfs)
+        const toDate = (ddmmyyyy: string) => {
+            const m = ddmmyyyy.match(/^([0-3]\d)\/([0-1]?\d)\/(\d{4})$/)
+            if (!m) return null
+            const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]))
+            return isNaN(d.getTime()) ? null : d
+        }
+        const businessDaysBetween = (a: Date, b: Date) => {
+            const cur = new Date(a); cur.setHours(0,0,0,0)
+            const stop = new Date(b); stop.setHours(0,0,0,0)
+            let count = 0
+            while (cur <= stop) { const day = cur.getDay(); if (day !== 0 && day !== 6) count++; cur.setDate(cur.getDate()+1) }
+            return count
+        }
+        const resultados: Array<{ cpf: string; matricula: string; nome: string; setor: string; diasUteis: number; diasTrabalhados: number; faltas: number; totalHorasTrabalhadas: number; totalHorasDevidas: number; saldoHoras: number }> = []
+        for (const p of pessoas) {
+            if (!p.cpf) continue
+            const rows = await prisma.espelhoDiario.findMany({ where: { cpf: p.cpf, mesAno: { in: alvoMeses } }, select: { data: true, horasTrabalhadas: true, status: true } }) as any
+            const dentro: Array<{ data: Date; horas: number; status: string }> = rows.map((r: any) => ({ data: toDate(String(r.data)) as Date, horas: Number(r.horasTrabalhadas || 0), status: String(r.status || '') })).filter((x: { data: Date; horas: number; status: string }) => x.data && x.data >= start && x.data <= end)
+            const diasUteis = businessDaysBetween(start, end)
+            const diasTrabalhados = dentro.filter((x: { data: Date; horas: number; status: string }) => x.status === 'Presente' || x.horas > 0).length
+            const faltas = Math.max(diasUteis - diasTrabalhados, 0)
+            const totalHorasTrabalhadas = Number(dentro.reduce((a: number, b: { data: Date; horas: number; status: string }) => a + (isNaN(b.horas) ? 0 : b.horas), 0).toFixed(2))
+            const totalHorasDevidas = diasUteis * 7
+            const saldoHoras = Number((totalHorasTrabalhadas - totalHorasDevidas).toFixed(2))
+            resultados.push({ cpf: p.cpf, matricula: p.matricula || '', nome: p.nome || 'N/D', setor: p.setor || '', diasUteis, diasTrabalhados, faltas, totalHorasTrabalhadas, totalHorasDevidas, saldoHoras })
+        }
+    return resultados
+  }
+
+  async getEspelhoRecessoDiario(params: { recessoId: string }) {
+    const recesso = await prisma.recesso.findUnique({ where: { id: params.recessoId }, select: { DataInicial: true, dataFinal: true } })
+    if (!recesso) throw new AppError('Recesso não encontrado.')
+    const start = new Date(recesso.DataInicial)
+    const end = new Date(recesso.dataFinal)
+    const mm1 = String(start.getMonth() + 1)
+    const yy1 = String(start.getFullYear())
+    const mm2 = String(end.getMonth() + 1)
+    const yy2 = String(end.getFullYear())
+    const alvoMeses = [ `${mm1.padStart(2,'0')}/${yy1}`, `${Number(mm1)}/${yy1}`, `${mm2.padStart(2,'0')}/${yy2}`, `${Number(mm2)}/${yy2}` ]
+    const sqlCpfs = `
+      SELECT DISTINCT COALESCE(sf."CPF", sf2."CPF") AS cpf,
+                      COALESCE(e."servidorMatricula", s."servidorMatricula", f."matricula") AS matricula,
+                      COALESCE(f."nome", split_part(e."nome", ' - ', 1), s."nomeServidor")   AS nome,
+                      COALESCE(sf."SIGLA", sf2."SIGLA", '') AS setor
+      FROM "Escala" e
+      LEFT JOIN "Solicitacao" s ON s."escalaId" = e."id"
+      LEFT JOIN "Funcionario" f ON f."id" = e."servidorId"
+      LEFT JOIN "sarh_funcionario" sf ON sf."MATRICULA" = e."servidorMatricula"
+      LEFT JOIN "sarh_funcionario" sf2 ON sf2."MATRICULA" = COALESCE(s."servidorMatricula", f."matricula")
+      WHERE e."recessoId" = '${String(params.recessoId).replace(/'/g, "''")}'
+    `
+    const pessoas = await prisma.$queryRawUnsafe<Array<{ cpf: string; matricula: string; nome: string; setor: string }>>(sqlCpfs)
+    const toDate = (ddmmyyyy: string): Date | null => {
+      const m = ddmmyyyy.match(/^([0-3]\d)\/([0-1]?\d)\/(\d{4})$/)
+      if (!m) return null
+      const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]))
+      return isNaN(d.getTime()) ? null : d
     }
+    const diarios: Array<{ cpf: string; matricula: string; nome: string; setor: string; data: string; mesAno: string; horasTrabalhadas: number; status: string }> = []
+    for (const p of pessoas) {
+      if (!p.cpf) continue
+      const rows = await prisma.espelhoDiario.findMany({ where: { cpf: p.cpf, mesAno: { in: alvoMeses } }, select: { data: true, mesAno: true, horasTrabalhadas: true, status: true } }) as any
+      for (const r of rows) {
+        const d = toDate(String(r.data))
+        if (!d) continue
+        if (d < start || d > end) continue
+        diarios.push({
+          cpf: p.cpf,
+          matricula: p.matricula || '',
+          nome: p.nome || 'N/D',
+          setor: p.setor || '',
+          data: String(r.data),
+          mesAno: String(r.mesAno),
+          horasTrabalhadas: Number(r.horasTrabalhadas || 0),
+          status: String(r.status || '')
+        })
+      }
+    }
+    diarios.sort((a, b) => {
+      const [da, ma, ya] = a.data.split('/').map(Number)
+      const [db, mb, yb] = b.data.split('/').map(Number)
+      const ta = new Date(ya, ma - 1, da).getTime()
+      const tb = new Date(yb, mb - 1, db).getTime()
+      if (a.cpf !== b.cpf) return a.cpf.localeCompare(b.cpf)
+      return ta - tb
+    })
+    return diarios
+  }
 
     async getEspelhoFormado(cpf: string, mes: string | number, ano: string | number) {
         // Função auxiliar para formatar mês/ano como "MM/AAAA"

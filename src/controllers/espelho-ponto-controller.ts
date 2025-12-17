@@ -4,7 +4,7 @@ import { getInicioFimDoMes } from '../utils/getInicioFimDoMes'
 import { AppError } from '../utils/app-erro'
 
 export class EspelhoPontoController {
-    private service = new EspelhoPontoService()
+  private service = new EspelhoPontoService()
     async gerarEspelhoMensal(request: Request, response: Response): Promise<any> {
         try {
             const { cpf, mesAno } = request.params
@@ -241,7 +241,7 @@ export class EspelhoPontoController {
         }
     }
 
-    async getallEspelhoMensal(request: Request, response: Response) {
+  async getallEspelhoMensal(request: Request, response: Response) {
         try {
             const espelhoMensal = await this.service.getEspelhomensal()
             response.json({
@@ -261,4 +261,28 @@ export class EspelhoPontoController {
             )
         }
     }
+
+  async getEspelhoRecessoSummary(request: Request, response: Response) {
+    try {
+      const recessoId = String(request.query.recessoId || '').trim()
+      const setor = String(request.query.setor || '').trim()
+      const matricula = String(request.query.matricula || '').trim()
+      if (!recessoId) return response.status(400).json({ success: false, error: 'Parâmetros inválidos', message: 'Informe recessoId' })
+      const data = await this.service.getEspelhoRecessoSummary({ recessoId, setor: setor || undefined, matricula: matricula || undefined })
+      return response.status(200).json({ success: true, message: 'Espelho de ponto do recesso (resumo)', data })
+    } catch (error: any) {
+      return response.status(500).json({ success: false, error: 'Erro ao gerar espelho de recesso', message: `${error.message || error}` })
+    }
+  }
+
+  async getEspelhoRecessoDiario(request: Request, response: Response) {
+    try {
+      const recessoId = String(request.query.recessoId || '').trim()
+      if (!recessoId) return response.status(400).json({ success: false, error: 'Parâmetros inválidos', message: 'Informe recessoId' })
+      const data = await this.service.getEspelhoRecessoDiario({ recessoId })
+      return response.status(200).json({ success: true, message: 'Espelho diário do recesso', data })
+    } catch (error: any) {
+      return response.status(500).json({ success: false, error: 'Erro ao resgatar espelho diário do recesso', message: `${error.message || error}` })
+    }
+  }
 }

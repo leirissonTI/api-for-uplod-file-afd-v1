@@ -31,7 +31,7 @@ class ServidorService {
     }
     async buscarPorNome(nome) {
         try {
-            const rows = await this.prismaService.funcionario.findMany({
+            return await this.prismaService.funcionario.findMany({
                 where: { nome: { contains: nome, mode: 'insensitive' } },
                 select: {
                     id: true,

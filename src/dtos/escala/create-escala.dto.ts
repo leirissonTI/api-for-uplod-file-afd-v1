@@ -12,7 +12,7 @@ export const createEscalaDtoSchema = z.object({
   nome: z.string().min(1, "O nome é obrigatório."),
   lotacaoId: z.string().min(1, "A lotação é obrigatória."),
   recessoId: z.string().min(1, "O recesso é obrigatório."),
-  chefeId: z.string().min(1, "O chefeId é obrigatório."),
+  chefeId: z.string().optional(),
   dataEscala: z.union([z.coerce.date(), z.string()]).optional(),
   diasEscala: z.array(diaItemSchema).optional(),
   escalaFolgar: z.array(z.union([z.string(), z.coerce.date()])).optional(),

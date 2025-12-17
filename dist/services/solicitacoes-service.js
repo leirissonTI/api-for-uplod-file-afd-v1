@@ -11,10 +11,88 @@ class SolicitacoesService {
     constructor(prismaService = prisma_1.prisma) {
         this.prismaService = prismaService;
     }
+    // async getAllSolicitacoes() {
+    //     try {
+    //         // 1) Buscar todas as solicitações com os campos necessários para exibição
+    //         const solicitacoesBrutas = await this.prismaService.solicitacao.findMany({
+    //             select: {
+    //                 id: true,
+    //                 status: true,
+    //                 servidorMatricula: true,
+    //                 nomeServidor: true,
+    //                 nomeChefia: true,
+    //                 lotacao: true,
+    //                 dia: true,
+    //                 entrada1: true,
+    //                 saida1: true,
+    //                 entrada2: true,
+    //                 saida2: true,
+    //                 opcao: true,
+    //                 aprovador: { select: { nome: true } },
+    //                 escala: {
+    //                     select: {
+    //                         id: true,
+    //                         nome: true,
+    //                         escalado: true,
+    //                         servidorMatricula: true,
+    //                         dataEscala: true,
+    //                         recebePagamento: true,
+    //                         lotacao: { select: { nome: true } },
+    //                         recesso: { select: { descricao: true } },
+    //                     }
+    //                 }
+    //             },
+    //             orderBy: [{ dia: 'asc' }]
+    //         })
+    //         const matriculas_servidores = solicitacoesBrutas.map(solicitacao => solicitacao.servidorMatricula)
+    //         const matricula_unicas = [...new Set(matriculas_servidores)]
+    //         const servidores = matricula_unicas.map(async servidor_matricula => {
+    //             return await this.prismaService.sarh_funcionario.findMany({
+    //                 where: {
+    //                     MATRICULA: servidor_matricula
+    //                 }
+    //             })
+    //         })
+    //         const servidoresResolvidos = await Promise.all(servidores)
+    //         const cpf_unicos = [...new Set(servidoresResolvidos.map(servidor => servidor[0].CPF))]
+    //         const pontos_diarios = cpf_unicos.map(async cpf => {
+    //             return await this.prismaService.espelhoDiario.findMany({
+    //                 where: {
+    //                     cpf: cpf as string,
+    //                 }
+    //             })
+    //         })
+    //         const pontos_diariosResolvidos = await Promise.all(pontos_diarios)
+    //         console.log(pontos_diariosResolvidos)
+    //         // 2) Utilitário local: formata Date em HH:mm; retorna null se o valor não for uma data válida
+    //         const formatHoraMinuto = (data?: Date | null): string | null => {
+    //             if (!(data instanceof Date)) return null
+    //             const horas = String(data.getHours()).padStart(2, '0')
+    //             const minutos = String(data.getMinutes()).padStart(2, '0')
+    //             return `${horas}:${minutos}`
+    //         }
+    //         // 3) Enriquecer o payload com strings de horário para facilitar consumo no frontend
+    //         const solicitacoesFormatadas = (solicitacoesBrutas as Array<any>).map((sol) => ({
+    //             ...sol,
+    //             primeiraEntrada: formatHoraMinuto(sol.entrada1),
+    //             segundaEntrada: formatHoraMinuto(sol.entrada2),
+    //             primeiraSaida: formatHoraMinuto(sol.saida1),
+    //             segundaSaida: formatHoraMinuto(sol.saida2),
+    //         }))
+    //         // 4) Retornar lista pronta para exibição, com ordenação previsível
+    //         return solicitacoesFormatadas
+    //     } catch (error) {
+    //         // Tratamento de erro padronizado para facilitar diagnóstico
+    //         console.log(`[Erro] Falha ao listar solicitações: ${(error as any).message || error}`)
+    //         throw new Error(`Erro ao buscar todas as solicitações. ${error}`)
+    //     }
+    // }
     async getAllSolicitacoes() {
         try {
-            console.log('[Solicitacao] Listando todas as solicitações');
-            const solicitacoes = await this.prismaService.solicitacao.findMany({
+            /* =====================================================
+             * 1. Buscar solicitações
+             * ===================================================== */
+            const solicitacoesBrutas = await this.prismaService.solicitacao.findMany({
                 select: {
                     id: true,
                     status: true,
@@ -39,16 +117,138 @@ class SolicitacoesService {
                             recebePagamento: true,
                             lotacao: { select: { nome: true } },
                             recesso: { select: { descricao: true } },
-                        }
-                    }
-                }
+                        },
+                    },
+                },
+                orderBy: [{ dia: 'asc' }],
             });
-            console.log(`[Solicitacao] Solicitações carregadas=${solicitacoes.length}`);
-            return solicitacoes;
+            if (!solicitacoesBrutas.length)
+                return [];
+            /* =====================================================
+             * 2. Matrículas únicas
+             * ===================================================== */
+            const matriculasUnicas = [
+                ...new Set(solicitacoesBrutas.map(s => s.servidorMatricula)),
+            ];
+            console.log(matriculasUnicas);
+            /* =====================================================
+             * 3. Buscar servidores (matrícula -> CPF)
+             * ===================================================== */
+            const servidores = await this.prismaService.sarh_funcionario.findMany({
+                where: {
+                    MATRICULA: { in: matriculasUnicas },
+                },
+                select: {
+                    MATRICULA: true,
+                    CPF: true,
+                },
+            });
+            const matriculaCpfMap = new Map();
+            servidores.forEach(s => matriculaCpfMap.set(s.MATRICULA, s.CPF));
+            console.log("matriculaCpfMap: ");
+            console.log(matriculaCpfMap);
+            console.log("servidores: ");
+            console.log(servidores);
+            /* =====================================================
+             * 4. Buscar espelhos diários (CPF IN)
+             * ===================================================== */
+            const cpfsUnicos = [...new Set(servidores.map(s => s.CPF))];
+            const pontosDiarios = await this.prismaService.espelhoDiario.findMany({
+                where: {
+                    cpf: { in: cpfsUnicos },
+                },
+            });
+            console.log("pontosDiarios: ");
+            console.log(pontosDiarios);
+            /* =====================================================
+             * 5. Indexar espelhos por CPF + Dia
+             * ===================================================== */
+            const espelhoMap = new Map();
+            const dateToDDMMYYYY = (d) => {
+                const dd = String(d.getDate()).padStart(2, '0');
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const yy = String(d.getFullYear());
+                return `${dd}/${mm}/${yy}`;
+            };
+            const normalizeDateStr = (val) => {
+                if (val instanceof Date)
+                    return dateToDDMMYYYY(val);
+                const s = String(val || '');
+                const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                if (iso)
+                    return `${iso[3]}/${iso[2]}/${iso[1]}`;
+                const ddmm = s.match(/^([0-3]?\d)\/([0-1]?\d)\/(\d{4})$/);
+                if (ddmm)
+                    return `${ddmm[1].padStart(2, '0')}/${ddmm[2].padStart(2, '0')}/${ddmm[3]}`;
+                const d = new Date(s);
+                if (!isNaN(d.getTime()))
+                    return dateToDDMMYYYY(d);
+                return s;
+            };
+            pontosDiarios.forEach(ponto => {
+                const dia = normalizeDateStr(ponto.data);
+                const chave = `${ponto.cpf}_${dia}`;
+                espelhoMap.set(chave, ponto);
+                console.log("Chave => ", chave);
+            });
+            console.log("espelhoMap: " + espelhoMap);
+            /* =====================================================
+             * 6. Utilitário de formatação
+             * ===================================================== */
+            const formatHoraMinuto = (data) => {
+                if (!(data instanceof Date))
+                    return null;
+                const h = String(data.getHours()).padStart(2, '0');
+                const m = String(data.getMinutes()).padStart(2, '0');
+                return `${h}:${m}`;
+            };
+            /* =====================================================
+             * 7. Integração final
+             * ===================================================== */
+            const solicitacoesIntegradas = solicitacoesBrutas.map(sol => {
+                const cpf = matriculaCpfMap.get(sol.servidorMatricula);
+                console.log("cpf: " + cpf);
+                if (!cpf) {
+                    return {
+                        ...sol,
+                        primeiraEntrada: formatHoraMinuto(sol.entrada1),
+                        primeiraSaida: formatHoraMinuto(sol.saida1),
+                        segundaEntrada: formatHoraMinuto(sol.entrada2),
+                        segundaSaida: formatHoraMinuto(sol.saida2),
+                    };
+                }
+                const dia = dateToDDMMYYYY(sol.dia);
+                const chave = `${cpf}_${dia}`;
+                const espelho = espelhoMap.get(chave);
+                const entrada1 = sol.entrada1 ?? espelho?.primeiraEntrada ?? null;
+                const saida1 = sol.saida1 ?? espelho?.primeiraSaida ?? null;
+                const entrada2 = sol.entrada2 ?? espelho?.segundaEntrada ?? null;
+                const saida2 = sol.saida2 ?? espelho?.segundaSaida ?? null;
+                console.log();
+                console.log({
+                    dia,
+                    chave,
+                    espelho,
+                    entrada1,
+                    entrada2
+                });
+                return {
+                    ...sol,
+                    entrada1,
+                    saida1,
+                    entrada2,
+                    saida2,
+                    primeiraEntrada: formatHoraMinuto(entrada1),
+                    primeiraSaida: formatHoraMinuto(saida1),
+                    segundaEntrada: formatHoraMinuto(entrada2),
+                    segundaSaida: formatHoraMinuto(saida2),
+                };
+            });
+            return solicitacoesIntegradas;
         }
         catch (error) {
-            console.log(`[Erro] Falha ao listar solicitações: ${error.message || error}`);
-            throw new Error(`Erro ao buscar todas as solicitações. ${error}`);
+            console.error('[Erro] getAllSolicitacoes:', error);
+            throw new Error('Erro ao buscar todas as solicitações');
         }
     }
     async getSolicitacaoById(id) {
@@ -217,6 +417,103 @@ class SolicitacoesService {
             }
         }
         return { recebidos, criados, atualizados, erros };
+    }
+    async getSolicitacoesPorMatricula(params) {
+        const { matricula, recessoId } = params;
+        const where = { servidorMatricula: { equals: String(matricula), mode: 'insensitive' } };
+        if (recessoId)
+            where.escala = { recessoId };
+        const solicitacoes = await this.prismaService.solicitacao.findMany({
+            where,
+            select: {
+                id: true,
+                status: true,
+                aprovadorId: true,
+                servidorMatricula: true,
+                nomeServidor: true,
+                nomeChefia: true,
+                lotacao: true,
+                dia: true,
+                entrada1: true,
+                saida1: true,
+                entrada2: true,
+                saida2: true,
+                opcao: true,
+                aprovador: { select: { nome: true, matricula: true, id: true } },
+                escala: {
+                    select: {
+                        id: true,
+                        nome: true,
+                        escalado: true,
+                        servidorMatricula: true,
+                        dataEscala: true,
+                        recebePagamento: true,
+                        lotacao: { select: { nome: true } },
+                        recesso: { select: { descricao: true } },
+                    }
+                }
+            },
+            orderBy: [{ dia: 'asc' }]
+        });
+        return solicitacoes;
+    }
+    async aprovarSolicitacao(id, params) {
+        const { aprovadorId, chefeMatricula, motivo } = params;
+        let aprovadorIdFinal = aprovadorId || null;
+        if (!aprovadorIdFinal && chefeMatricula) {
+            const chefe = await this.prismaService.funcionario.findUnique({ where: { matricula: chefeMatricula }, select: { id: true } });
+            if (chefe)
+                aprovadorIdFinal = chefe.id;
+        }
+        const status = params.status || 'APROVADA';
+        return this.prismaService.solicitacao.update({
+            where: { id },
+            data: {
+                aprovadorId: aprovadorIdFinal,
+                status: status,
+                motivo: motivo || undefined,
+                updatedAt: new Date(),
+            }
+        });
+    }
+    async getSolicitacoesPorAprovadorMatricula(params) {
+        const { matricula, recessoId } = params;
+        const where = { aprovador: { matricula: { equals: String(matricula), mode: 'insensitive' } } };
+        if (recessoId)
+            where.escala = { recessoId };
+        const solicitacoes = await this.prismaService.solicitacao.findMany({
+            where,
+            select: {
+                id: true,
+                status: true,
+                aprovadorId: true,
+                servidorMatricula: true,
+                nomeServidor: true,
+                nomeChefia: true,
+                lotacao: true,
+                dia: true,
+                entrada1: true,
+                saida1: true,
+                entrada2: true,
+                saida2: true,
+                opcao: true,
+                aprovador: { select: { nome: true, matricula: true, id: true } },
+                escala: {
+                    select: {
+                        id: true,
+                        nome: true,
+                        escalado: true,
+                        servidorMatricula: true,
+                        dataEscala: true,
+                        recebePagamento: true,
+                        lotacao: { select: { nome: true } },
+                        recesso: { select: { descricao: true } },
+                    }
+                }
+            },
+            orderBy: [{ dia: 'asc' }]
+        });
+        return solicitacoes;
     }
 }
 exports.SolicitacoesService = SolicitacoesService;

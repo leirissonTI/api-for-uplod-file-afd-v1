@@ -8,3 +8,4 @@ export const dashboardRoutes = Router()
 
 dashboardRoutes.get('/servidores-resumo', ((req: Request, res: Response) => { dashboardController.getResumoServidores(req, res) }) as RequestHandler)
 dashboardRoutes.get('/escala-espelho-join', ((req: Request, res: Response) => { dashboardController.getEscalaEspelhoJoin(req, res) }) as RequestHandler)
+dashboardRoutes.get('/status-recesso', ((req: Request, res: Response) => { dashboardController.getStatusRecessoPorCpf(req, res) }) as RequestHandler)

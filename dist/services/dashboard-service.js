@@ -190,10 +190,42 @@ left join espelho_diario ed on sf."CPF" = ed.cpf
                 avaliacaoJaneiro: janRes.avaliacao,
                 statusDezembro: dezRes.status,
                 statusJaneiro: janRes.status,
+                statusRecesso: 'RECESSO'
             });
         }
         //console.log(`[Dashboard] resultados carregados=${resultados.length}`)
         return resultados;
+    }
+    async getStatusRecessoPorCpf(params) {
+        const recessoId = String(params.recessoId).trim();
+        const setor = String(params.setor || '').trim();
+        if (!recessoId)
+            throw new Error('Parâmetro recessoId é obrigatório');
+        const whereSetor = setor ? `AND COALESCE(sf."SIGLA", sf2."SIGLA") = '${setor.replace(/'/g, "''")}'` : '';
+        const sql = `
+      SELECT DISTINCT
+        COALESCE(sf."CPF", sf2."CPF")                 AS cpf,
+        COALESCE(e."servidorMatricula", s."servidorMatricula", f."matricula") AS matricula,
+        COALESCE(f."nome", split_part(e."nome", ' - ', 1), s."nomeServidor")   AS nome,
+        COALESCE(sf."SIGLA", sf2."SIGLA", '')         AS setor
+      FROM "Escala" e
+      LEFT JOIN "Solicitacao" s ON s."escalaId" = e."id"
+      LEFT JOIN "Funcionario" f ON f."id" = e."servidorId"
+      LEFT JOIN "sarh_funcionario" sf ON sf."MATRICULA" = e."servidorMatricula"
+      LEFT JOIN "sarh_funcionario" sf2 ON sf2."MATRICULA" = COALESCE(s."servidorMatricula", f."matricula")
+      WHERE e."recessoId" = '${recessoId.replace(/'/g, "''")}'
+      ${whereSetor}
+    `;
+        const rows = await this.prismaService.$queryRawUnsafe(sql);
+        return rows
+            .filter(r => r.cpf)
+            .map(r => ({
+            cpf: String(r.cpf),
+            matricula: String(r.matricula || ''),
+            nome: String(r.nome || 'N/D'),
+            setor: String(r.setor || ''),
+            statusRecesso: 'RECESSO'
+        }));
     }
     mesesDoRecesso(recesso) {
         const meses = new Set();
@@ -244,11 +276,11 @@ left join espelho_diario ed on sf."CPF" = ed.cpf
       FROM "Escala" e
       JOIN "Lotacao" l ON l."id" = e."lotacaoId"
       LEFT JOIN "Solicitacao" s ON s."escalaId" = e."id"
-      LEFT JOIN "sarh_funcionario" sf ON sf."MATRICULA" = COALESCE(s."matricula", e."servidorMatricula")
+      LEFT JOIN "sarh_funcionario" sf ON sf."MATRICULA" = COALESCE(s."servidorMatricula", e."servidorMatricula")
       LEFT JOIN "EspelhoDiario" ed
-        ON ed."cpf" = sf."CPF"
-       AND ed."mesAno" IN (to_char(e."data_escala", 'MM/YYYY'), to_char(e."data_escala", 'FMMM/YYYY'))
-       AND ed."diaDoMes" IN (to_char(e."data_escala", 'DD'), to_char(e."data_escala", 'FMDD'))
+      ON ed."cpf" = sf."CPF"
+      AND ed."mesAno" IN (to_char(e."data_escala", 'MM/YYYY'), to_char(e."data_escala", 'FMMM/YYYY'))
+      AND ed."diaDoMes" IN (to_char(e."data_escala", 'DD'), to_char(e."data_escala", 'FMDD'))
       WHERE e."recessoId" = $1
       ORDER BY e."data_escala" ASC, e."nome" ASC`;
         const rows = await this.prismaService.$queryRawUnsafe(sql, recessoId);

@@ -10,3 +10,5 @@ exports.espelhoPontoRoutes.get('/mensal', (req, res) => espelhoPontoController.g
 exports.espelhoPontoRoutes.post('/gerar-espelho/:cpf/:mesAno', (req, res) => espelhoPontoController.gerarEspelhoMensal(req, res));
 exports.espelhoPontoRoutes.get('/resgatar-espelho-mes/:cpf/:mesAno', ((req, res) => { espelhoPontoController.resgatarEspelhoDoMes(req, res); }));
 exports.espelhoPontoRoutes.get('/resgatar-espelho-diario-mes/:cpf/:mesAno', ((req, res) => { espelhoPontoController.resgatarPontosDiariosDoMes(req, res); }));
+exports.espelhoPontoRoutes.get('/recesso/summary', ((req, res) => { espelhoPontoController.getEspelhoRecessoSummary(req, res); }));
+exports.espelhoPontoRoutes.get('/recesso/diario', ((req, res) => { espelhoPontoController.getEspelhoRecessoDiario(req, res); }));

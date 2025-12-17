@@ -90,4 +90,40 @@ export class SolicitacoesController {
             return res.status(500).json({ success: false, error: 'Erro ao importar frequências do backup', message: `${(error as any).message || error}` })
         }
     }
+
+    async buscarPorMatricula(req: Request, res: Response) {
+        try {
+            const matricula = String(req.query.matricula || req.params.matricula || '').trim()
+            const recessoId = String(req.query.recessoId || '').trim()
+            if (!matricula) return res.status(400).json({ success: false, error: 'Parâmetros inválidos', message: 'Informe matricula' })
+            const data = await this.solicitacoesService.getSolicitacoesPorMatricula({ matricula, recessoId: recessoId || undefined })
+            return res.status(200).json({ success: true, message: 'Solicitações filtradas por matrícula', data })
+        } catch (error: any) {
+            return res.status(500).json({ success: false, error: 'Erro ao buscar solicitações por matrícula', message: `${(error as any).message || error}` })
+        }
+    }
+
+    async aprovarSolicitacao(req: Request, res: Response) {
+        try {
+            const id = String(req.params.id || '').trim()
+            const { aprovadorId, chefeMatricula, motivo, status } = (req.body || {})
+            if (!id) return res.status(400).json({ success: false, error: 'Parâmetros inválidos', message: 'Informe id' })
+            const atualizada = await this.solicitacoesService.aprovarSolicitacao(id, { aprovadorId, chefeMatricula, motivo, status })
+            return res.status(200).json({ success: true, message: 'Solicitação atualizada com sucesso.', data: atualizada })
+        } catch (error: any) {
+            return res.status(500).json({ success: false, error: 'Erro ao aprovar/atualizar solicitação', message: `${(error as any).message || error}` })
+        }
+    }
+
+    async buscarPorAprovadorMatricula(req: Request, res: Response) {
+        try {
+            const matricula = String(req.query.matricula || req.params.matricula || '').trim()
+            const recessoId = String(req.query.recessoId || '').trim()
+            if (!matricula) return res.status(400).json({ success: false, error: 'Parâmetros inválidos', message: 'Informe matricula' })
+            const data = await this.solicitacoesService.getSolicitacoesPorAprovadorMatricula({ matricula, recessoId: recessoId || undefined })
+            return res.status(200).json({ success: true, message: 'Solicitações filtradas por matrícula de aprovador', data })
+        } catch (error: any) {
+            return res.status(500).json({ success: false, error: 'Erro ao buscar solicitações por matrícula de aprovador', message: `${(error as any).message || error}` })
+        }
+    }
 }

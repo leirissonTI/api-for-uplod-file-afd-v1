@@ -17,7 +17,7 @@ export class EscalaService {
      */
     async getAllEscalas(): Promise<Array<{ matricula: string; nome: string; recesso: string; periodoEscalado: string[]; preferenciaFolga: string[]; preferenciaPagamento: string[] }>> {
         try {
-
+            
             const escalas = await this.prismaService.escala.findMany({
                 select:{
                     id: true,
@@ -393,27 +393,18 @@ export class EscalaService {
                         const yy = String(dt.getFullYear())
                         const mesAnoPad = `${mm.padStart(2,'0')}/${yy}`
                         const mesAnoNoPad = `${mm}/${yy}`
-                        const candidato = await this.prismaService.espelhoDiario.findFirst({
-                            where: {
-                                cpf: cpfServidor,
-                                OR: [
-                                    { mesAno: mesAnoPad, diaDoMes: ddPad },
-                                    { mesAno: mesAnoPad, diaDoMes: ddNoPad },
-                                    { mesAno: mesAnoNoPad, diaDoMes: ddPad },
-                                    { mesAno: mesAnoNoPad, diaDoMes: ddNoPad },
-                                ]
-                            },
-                            select: { id: true, primeiraEntrada: true, primeiraSaida: true, segundaEntrada: true, segundaSaida: true }
-                        })
+                        const dataStr = `${ddPad}/${mm.padStart(2,'0')}/${yy}`
+                        const sql = `SELECT "primeiraEntrada","primeiraSaida","segundaEntrada","segundaSaida" FROM "espelho_diario" WHERE "cpf"='${cpfServidor.replace(/'/g,"''")}' AND "mesAno" IN ('${mesAnoPad}','${mesAnoNoPad}') AND "data"='${dataStr}' LIMIT 1`
+                        const rows: Array<{ primeiraEntrada?: string|null; primeiraSaida?: string|null; segundaEntrada?: string|null; segundaSaida?: string|null }> = await this.prismaService.$queryRawUnsafe(sql)
+                        const candidato = rows && rows[0]
                         if (candidato) {
-                            espelhoDiarioId = candidato.id
                             e1 = candidato.primeiraEntrada || undefined
                             s1 = candidato.primeiraSaida || undefined
                             e2 = candidato.segundaEntrada || undefined
                             s2 = candidato.segundaSaida || undefined
-                            console.log(`[EspelhoDiario] Vinculado id=${espelhoDiarioId} cpf=${cpfServidor} mesAno=${mesAnoPad} dia=${ddPad}`)
+                            console.log(`[EspelhoDiario] Vinculado cpf=${cpfServidor} mesAno=${mesAnoPad} data=${dataStr}`)
                         } else {
-                            console.log(`[EspelhoDiario] Não encontrado para cpf=${cpfServidor} mesAno=${mesAnoPad}/${mesAnoNoPad} dia=${ddPad}/${ddNoPad}`)
+                            console.log(`[EspelhoDiario] Não encontrado para cpf=${cpfServidor} mesAno=${mesAnoPad}/${mesAnoNoPad} data=${dataStr}`)
                         }
                     }
                     await this.prismaService.solicitacao.create({
